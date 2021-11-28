@@ -1,0 +1,56 @@
+<?xml version="1.0"?>
+<!--
+ PACKAGE:  Raspberry Pi General Purpose Input/Output for indigo (PiGPIO)
+  MODULE:  Actions.xml
+   TITLE:  Define PiGPIO action objects (Actions.xml)
+FUNCTION:  Actions.xml defines PiGPIO action objects and specifies action
+           callback methods.
+   USAGE:  Actions.xml is read by the indigo server during plugin startup.
+ AUTHORS:  papamac
+ VERSION:  1.0.0
+    DATE:  November 24, 2021
+-->
+
+<Actions>
+
+
+	<!-- ############ Read/Write Analog/Digital Inputs/Outputs ############ -->
+
+
+	<Action id="read" uiPath="DeviceActions" deviceFilter="self">
+		<Name>Read</Name>
+		<CallbackMethod>read</CallbackMethod>
+	</Action>
+
+
+	<Action id="writeBit" uiPath="DeviceActions" deviceFilter="self">
+		<Name>Write Bit</Name>
+		<CallbackMethod>write</CallbackMethod>
+		<ConfigUI>
+
+			<Field id="value" type="menu" defaultValue="0">
+                <Label>Enter Bit Value:</Label>
+                <List>
+                    <Option value="0">Off</Option>
+                    <Option value="1">On</Option>
+                </List>
+            </Field>
+
+		</ConfigUI>
+	</Action>
+
+
+	<Action id="write" uiPath="DeviceActions" deviceFilter="self">
+		<Name>Write</Name>
+		<CallbackMethod>write</CallbackMethod>
+		<ConfigUI>
+
+			<Field id="value" type="textfield">
+				<Label>Enter Numeric Value:</Label>
+			</Field>
+
+		</ConfigUI>
+	</Action>
+
+
+</Actions>

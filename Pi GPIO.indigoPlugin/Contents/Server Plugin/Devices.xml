@@ -1,0 +1,1114 @@
+<?xml version="1.0"?>
+<!--
+ PACKAGE:  indigo plugin interface to Raspberry Pi GPIO (Pi-GPIO)
+  MODULE:  Devices.xml
+   TITLE:  Define and initialize Pi GPIO device objects (Devices.xml)
+FUNCTION:  Devices.xml defines the structure of the Pi GPIO device
+           objects, specifies the ConfigUis, and sets default values.
+   USAGE:  Devices.xml is read by the indigo server during plugin startup.
+  AUTHOR:  papamac
+ VERSION:  0.1.0
+    DATE:  August 12, 2021
+-->
+
+<Devices>
+
+
+    <!-- ################################################################## -->
+    <!-- #                                                                # -->
+    <!-- #                      Analog Input Device                       # -->
+    <!-- #                                                                # -->
+    <!-- ################################################################## -->
+
+
+    <Device id="analogInput" type="sensor">
+        <Name>Analog Input</Name>
+        <ConfigUI>
+
+            <Field id="SupportsSensorValue" type="checkbox" hidden="true"
+                   defaultValue="true">
+            </Field>
+
+
+            <!-- ################### Raspberry Pi Host #################### -->
+
+
+            <!-- analogInput hostTitle -->
+            <Field id="hostTitle" type="label" alignText="center">
+                <Label>Select Raspberry Pi Host</Label>
+            </Field>
+
+
+            <!-- analogInput hostAddress -->
+            <Field id="hostAddress" type="textfield" defaultValue="raspi4b-io.local">
+                <Label>Host Address (FQDN or IPv4):</Label>
+            </Field>
+
+
+            <!-- analogInput portNumber -->
+            <Field id="portNumber" type="textfield" defaultValue="8888">
+                <Label>Port Number (1024-65535):</Label>
+            </Field>
+
+
+            <!-- analogInput hostId -->
+            <Field id="hostId" type="textfield" defaultValue="">
+                <Label>Host Id:</Label>
+            </Field>
+
+            <Field id="hostIdLabel" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true">
+                <Label>The Host Id is a unique code used to identify the host in the indigo device address.  It may be user specified or left blank for automatic assignment. Automatically assigned id's are extracted from the host FQDN ("name-id.domainName"), or simply set to "pi".</Label>
+            </Field>
+
+
+            <!-- ################## I/O Device Selection ################## -->
+
+
+            <!-- analogInput selectionSeparator -->
+            <Field id="selectionSeparator" type="separator"> </Field>
+
+            <Field id="selectionTitle" type="label" alignText="center">
+                <Label>Select I/O Device</Label>
+            </Field>
+
+
+            <!-- analogInput ioDevType -->
+            <Field id="ioDevType" type="menu" defaultValue="MCP3208">
+                <Label>I/O Device Name:</Label>
+                <List>
+                    <Option value="MCP3204">MCP3204 SPI 4-Channel 12-Bit ADC</Option>
+                    <Option value="MCP3208">MCP3208 SPI 8-Channel 12-Bit ADC</Option>
+                    <Option value="MCP3422">MCP3422 I2C 2-Channel 18-Bit ADC</Option>
+                    <Option value="MCP3423">MCP3423 I2C 2-Channel 18-Bit ADC</Option>
+                    <Option value="MCP3424">MCP3423 I2C 4-Channel 18-Bit ADC</Option>
+                </List>
+            </Field>
+
+
+            <!-- analogInput spiChannel -->
+            <Field id="spiChannel" type="menu" defaultValue="0" visibleBindingId="ioDevType" visibleBindingValue="(MCP3204, MCP3208)">
+                <Label>SPI Channel:</Label>
+                <List>
+                    <Option value="0">Channel 0</Option>
+                    <Option value="1">Channel 1</Option>
+                </List>
+            </Field>
+
+
+            <!-- analogInput i2cAddress -->
+            <Field id="i2cAddress" type="menu" defaultValue="0x68" visibleBindingId="ioDevType" visibleBindingValue="(MCP3423, MCP3424)">
+                <Label>I2C Address:</Label>
+                <List>
+                    <Option value="0x68">0x68</Option>
+                    <Option value="0x69">0x69</Option>
+                    <Option value="0x6a">0x6a</Option>
+                    <Option value="0x6b">0x6b</Option>
+                    <Option value="0x6c">0x6c</Option>
+                    <Option value="0x6d">0x6d</Option>
+                    <Option value="0x6e">0x6e</Option>
+                    <Option value="0x6f">0x6f</Option>
+                </List>
+            </Field>
+
+
+            <!-- analogInput adcChannel -->
+            <Field id="adcChannel" type="textfield" defaultValue="0" hidden="true"> </Field>
+
+            <Field id="adcChannel2" type="menu" defaultValue="0" visibleBindingId="ioDevType" visibleBindingValue="(MCP3422, MCP3423)">
+                <Label>ADC Channel Number:</Label>
+                <List>
+                    <Option value="0">Channel 0</Option>
+                    <Option value="1">Channel 1</Option>
+                </List>
+            </Field>
+
+            <Field id="adcChannel4" type="menu" defaultValue="0" visibleBindingId="ioDevType" visibleBindingValue="(MCP3204, MCP3424)">
+                <Label>ADC Channel Number:</Label>
+                <List>
+                    <Option value="0">Channel 0</Option>
+                    <Option value="1">Channel 1</Option>
+                    <Option value="2">Channel 2</Option>
+                    <Option value="3">Channel 3</Option>
+                </List>
+            </Field>
+
+            <Field id="adcChannel8" type="menu" defaultValue="0" visibleBindingId="ioDevType" visibleBindingValue="MCP3208">
+                <Label>ADC Channel Number:</Label>
+                <List>
+                    <Option value="0">Channel 0</Option>
+                    <Option value="1">Channel 1</Option>
+                    <Option value="2">Channel 2</Option>
+                    <Option value="3">Channel 3</Option>
+                    <Option value="4">Channel 4</Option>
+                    <Option value="5">Channel 5</Option>
+                    <Option value="6">Channel 6</Option>
+                    <Option value="7">Channel 7</Option>
+                </List>
+            </Field>
+
+
+            <!-- ################ I/O Device Configuration ################ -->
+
+
+            <!-- analogInput configSeparator -->
+            <Field id="configSeparator" type="separator"> </Field>
+
+            <Field id="configTitle" type="label" alignText="center">
+                <Label>Configure ADC</Label>
+            </Field>
+
+
+            <!-- analogInput inputConfiguration -->
+            <Field id="inputConfiguration" type="menu" defaultValue="1" visibleBindingId="ioDevType" visibleBindingValue="(MCP3204, MCP3208)">
+                <Label>Input Configuration:</Label>
+                <List>
+                    <Option value="1">Single-ended</Option>
+                    <Option value="0">Pseudo-differential</Option>
+                </List>
+            </Field>
+
+
+            <!-- analogInput resolution -->
+            <Field id="resolution" type="menu" defaultValue="12" visibleBindingId="ioDevType" visibleBindingValue="(MCP3422, MCP3423, MCP3424)">
+                <Label>Resolution:</Label>
+                <List>
+                    <Option value="12">12 Bits</Option>
+                    <Option value="14">14 Bits</Option>
+                    <Option value="16">16 Bits</Option>
+                    <Option value="18">18 Bits</Option>
+                </List>
+            </Field>
+
+
+            <!-- analogInput gain -->
+            <Field id="gain" type="menu" defaultValue="1" visibleBindingId="ioDevType" visibleBindingValue="(MCP3422, MCP3423, MCP3424)">
+                <Label>PGA Gain:</Label>
+                <List>
+                    <Option value="1">1X Gain</Option>
+                    <Option value="2">2X Gain</Option>
+                    <Option value="4">4X Gain</Option>
+                    <Option value="8">8X Gain</Option>
+                </List>
+            </Field>
+
+
+            <!-- analogInput scaling -->
+            <Field id="scaling" type="textfield" defaultValue="2.47058824">
+                <Label>Scaling Factor:</Label>
+            </Field>
+
+            <Field id="scalingLabel" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true">
+                <Label>The Scaling Factor is used to calibrate an analog input device for a specific application.  It multiplies all values read from the ADC.  The default value is for voltage measurements using the AB Electronics ADC Pi board.</Label>
+            </Field>
+
+
+            <!-- analogInput units -->
+            <Field id="units" type="menu" defaultValue=" ">
+                <Label>Sensor Value Units:</Label>
+                <List>
+                    <Option value=" ">None</Option>
+                    <Option value="V">Volts (V)</Option>
+                    <Option value="mV">Milivolts (mV)</Option>
+                    <Option value="µV">Microvolts (µV)</Option>
+                    <Option value="A">Amperes (A)</Option>
+                    <Option value="mA">Miliamps (mA)</Option>
+                    <Option value="µA">Microamps (µA)</Option>
+                    <Option value="W">Watts (W)</Option>
+                    <Option value="mW">Miliwatts (mW)</Option>
+                    <Option value="µW">Microwatts (µW)</Option>
+                    <Option value="°F">Degrees Fahrenheit (°F)</Option>
+                    <Option value="°C">Degrees Celsius (°C)</Option>
+                </List>
+            </Field>
+
+            <!-- analogInput bitRate -->
+            <Field id="bitRate" type="textfield" defaultValue="2000" visibleBindingId="ioDevType" visibleBindingValue="(MCP3204, MCP3208)">
+                <Label>SPI Bit Rate (100-10000 kb/s):</Label>
+            </Field>
+
+            <Field id="bitRateLabel" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true">
+                <Label>SPI bus data transfer rate for this device.  The bit rate in kb/s is usually equal to the SPI clock rate in kHz.</Label>
+            </Field>
+
+
+            <!-- ########## Change Detection and Limit Checking ########### -->
+
+
+            <!-- analogInput changeSeparator -->
+            <Field id="changeSeparator" type="separator"> </Field>
+
+            <Field id="changeTitle" type="label" alignText="center">
+                <Label>Select Change Detection and Limit Checking Options</Label>
+            </Field>
+
+
+            <!-- analogInput changeThreshold -->
+            <Field id="changeThreshold" type="textfield" defaultValue="1">
+                <Label>Change Threshold (percent):</Label>
+            </Field>
+
+            <Field id="changeLabel" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true">
+                <Label>Log a sensor value update if the value changes by this percentage or greater.</Label>
+            </Field>
+
+
+            <!-- analogInput lowLimitCheck -->
+            <Field id="lowLimitCheck" type="checkbox" defaultValue="false">
+                <Label>Low Limit Check:</Label>
+            </Field>
+
+            <Field id="lowLimit" type="textfield" defaultValue="0" visibleBindingId="lowLimitCheck" visibleBindingValue="true">
+                <Label>Low Limit:</Label>
+            </Field>
+
+            <Field id="lowLimitLabel" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true" visibleBindingId="lowLimitCheck" visibleBindingValue="true">
+                <Label>Log a low limit fault if the sensor value is less than the low limit.</Label>
+            </Field>
+
+
+            <!-- analogInput highLimitCheck -->
+            <Field id="highLimitCheck" type="checkbox" defaultValue="false">
+                <Label>High Limit Check:</Label>
+            </Field>
+
+            <Field id="highLimit" type="textfield" defaultValue="0" visibleBindingId="highLimitCheck" visibleBindingValue="true">
+                <Label>High Limit:</Label>
+            </Field>
+
+            <Field id="highLimitLabel" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true" visibleBindingId="highLimitCheck" visibleBindingValue="true">
+                <Label>Log a high limit fault if the sensor value is greater than the high limit.</Label>
+            </Field>
+
+
+            <!-- #################### Polling Options ##################### -->
+
+
+            <!-- analogInput pollingSeparator -->
+            <Field id="pollingSeparator" type="separator"> </Field>
+
+            <Field id="pollingTitle" type="label" alignText="center">
+                <Label>Select Polling Options</Label>
+            </Field>
+
+
+            <!-- analogInput polling -->
+            <Field id="polling" type="checkbox" defaultValue="false">
+                <Label>Enable Input Polling:</Label>
+            </Field>
+
+            <Field id="pollingLabel" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true">
+                <Label>Read the input at regular intervals, perform change detection and limit checks, update the sensor value state, and log value as needed.</Label>
+            </Field>
+
+            <Field id="pollingInterval" type="textfield" defaultValue="10" visibleBindingId="polling" visibleBindingValue="true">
+                <Label>Polling Interval (seconds):</Label>
+            </Field>
+
+            <Field id="intervalLabel" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true" visibleBindingId="polling" visibleBindingValue="true">
+                <Label>Setting the interval to 0.0 reads the output in each pass through the run loop.  The actual polling interval depends on the run loop time.</Label>
+            </Field>
+
+
+            <!-- analogInput logAll -->
+            <Field id="logAll" type="checkbox" defaultValue="false" visibleBindingId="polling" visibleBindingValue="true">
+                <Label>Log All Polling Results:</Label>
+            </Field>
+
+            <Field id="logAllLabel" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true" visibleBindingId="polling" visibleBindingValue="true">
+                <Label>Log the sensor value after each poll, regardless of the change.  By default, only changed values are logged.</Label>
+            </Field>
+
+
+        </ConfigUI>
+
+
+        <!-- ########################## States ############################ -->
+
+
+        <States>
+
+
+            <!-- analogInput changeDetected -->
+            <State id="changeDetected">
+                <ValueType boolType="TrueFalse">Boolean</ValueType>
+                <TriggerLabel>Sensor Value Change Detected</TriggerLabel>
+				<ControlPageLabel>Sensor Value Change Detected</ControlPageLabel>
+            </State>
+
+
+            <!-- analogInput lowFault -->
+            <State id="lowFault">
+                <ValueType boolType="TrueFalse">Boolean</ValueType>
+                <TriggerLabel>Sensor Value Low Fault</TriggerLabel>
+				<ControlPageLabel>Sensor Value Low Fault</ControlPageLabel>
+            </State>
+
+
+            <!-- analogInput highFault -->
+            <State id="highFault">
+                <ValueType boolType="TrueFalse">Boolean</ValueType>
+                <TriggerLabel>Sensor Value High Fault</TriggerLabel>
+				<ControlPageLabel>Sensor Value High Fault</ControlPageLabel>
+            </State>
+
+
+        </States>
+    </Device>
+
+
+    <!-- ################################################################## -->
+    <!-- #                                                                # -->
+    <!-- #                     Analog Output Device                       # -->
+    <!-- #                                                                # -->
+    <!-- ################################################################## -->
+
+
+    <Device id="analogOutput" type="sensor">
+        <Name>Analog Output</Name>
+        <ConfigUI>
+
+            <Field id="SupportsSensorValue" type="checkbox" hidden="true"
+                   defaultValue="true">
+            </Field>
+
+
+            <!-- ################### Raspberry Pi Host #################### -->
+
+
+            <!-- analogOutput hostTitle -->
+            <Field id="hostTitle" type="label" alignText="center">
+                <Label>Select Raspberry Pi Host</Label>
+            </Field>
+
+
+            <!-- analogOutput hostAddress -->
+            <Field id="hostAddress" type="textfield" defaultValue="raspi4b-io.local">
+                <Label>Host Address (FQDN or IPv4):</Label>
+            </Field>
+
+
+            <!-- analogOutput portNumber -->
+            <Field id="portNumber" type="textfield" defaultValue="8888">
+                <Label>Port Number (1024-65535):</Label>
+            </Field>
+
+
+            <!-- analogOutput hostId -->
+            <Field id="hostId" type="textfield" defaultValue="">
+                <Label>Host Id:</Label>
+            </Field>
+
+            <Field id="hostIdLabel" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true">
+                <Label>The Host Id is a unique code used to identify the host in the indigo device address.  It may be user specified or left blank for automatic assignment. Automatically assigned id's are extracted from the host FQDN ("name-id.domainName"), or simply set to "pi".</Label>
+            </Field>
+
+
+            <!-- ################## I/O Device Selection ################## -->
+
+
+            <!-- analogOutput selectionSeparator -->
+            <Field id="selectionSeparator" type="separator"> </Field>
+
+            <Field id="selectionTitle" type="label" alignText="center">
+                <Label>Select I/O Device</Label>
+            </Field>
+
+
+            <!-- analogOutput ioDevType -->
+            <Field id="ioDevType" type="menu" defaultValue="MCP4822">
+                <Label>I/O Device Name:</Label>
+                <List>
+                    <Option value="MCP4821">MCP4821 SPI Single Channel 12-Bit DAC</Option>
+                    <Option value="MCP4822">MCP4822 SPI Dual Channel 12-Bit DAC</Option>
+                </List>
+            </Field>
+
+
+            <!-- analogOutput spiChannel -->
+            <Field id="spiChannel" type="menu" defaultValue="0">
+                <Label>SPI Channel:</Label>
+                <List>
+                    <Option value="0">Channel 0</Option>
+                    <Option value="1">Channel 1</Option>
+                </List>
+            </Field>
+
+
+             <!-- analogOutput dacChannel -->
+            <Field id="dacChannel" type="textfield" defaultValue="0" hidden="true"> </Field>
+
+            <Field id="dacChannel2" type="menu" defaultValue="0" visibleBindingId="ioDevType" visibleBindingValue="MCP4822">
+                <Label>DAC Channel:</Label>
+                <List>
+                    <Option value="0">Channel 0 (Output A)</Option>
+                    <Option value="1">Channel 1 (Output B)</Option>
+                </List>
+            </Field>
+
+
+            <!-- ################ I/O Device Configuration ################ -->
+
+
+            <!-- analogOutput configSeparator -->
+            <Field id="configSeparator" type="separator"> </Field>
+
+            <Field id="configTitle" type="label" alignText="center">
+                <Label>Configure DAC</Label>
+            </Field>
+
+
+            <!-- analogOutput gain -->
+            <Field id="gain" type="menu" defaultValue="1">
+                <Label>Gain:</Label>
+                <List>
+                    <Option value="1">1X Gain - output range of 0-2.048 V</Option>
+                    <Option value="2">2X Gain - output range of 0-4.096 V</Option>
+                </List>
+            </Field>
+
+
+            <!-- analogOutput scaling -->
+            <Field id="scaling" type="textfield" defaultValue="1">
+                <Label>Scaling Factor:</Label>
+            </Field>
+
+            <Field id="scalingLabel" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true">
+                <Label>The Scaling Factor is used to calibrate an analog output device for a specific application.  It divides all values written to the DAC.</Label>
+            </Field>
+
+
+            <!-- analogOutput units -->
+            <Field id="units" type="menu" defaultValue=" ">
+                <Label>Sensor Value Units:</Label>
+                <List>
+                    <Option value=" ">None</Option>
+                    <Option value="V">Volts (V)</Option>
+                    <Option value="mV">Milivolts (mV)</Option>
+                    <Option value="µV">Microvolts (µV)</Option>
+                    <Option value="A">Amperes (A)</Option>
+                    <Option value="mA">Miliamps (mA)</Option>
+                    <Option value="µA">Microamps (µA)</Option>
+                    <Option value="W">Watts (W)</Option>
+                    <Option value="mW">Miliwatts (mW)</Option>
+                    <Option value="µW">Microwatts (µW)</Option>
+                    <Option value="°F">Degrees Fahrenheit (°F)</Option>
+                    <Option value="°C">Degrees Celsius (°C)</Option>
+                </List>
+            </Field>
+
+            <!-- analogOutput bitRate -->
+            <Field id="bitRate" type="textfield" defaultValue="2000">
+                <Label>SPI Bit Rate (100-10000 kb/s):</Label>
+            </Field>
+
+            <Field id="bitRateLabel" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true">
+                <Label>SPI bus data transfer rate for this device.  The bit rate in kb/s is usually equal to the SPI clock rate in kHz.</Label>
+            </Field>
+
+
+            <!-- ######################## Polling ######################### -->
+
+
+            <!-- analogOutput polling -->
+            <Field id="polling" type="checkbox" defaultValue="false" hidden="true"> </Field>
+
+
+        </ConfigUI>
+    </Device>
+
+
+    <!-- ################################################################## -->
+    <!-- #                                                                # -->
+    <!-- #                     Digital Input Device                       # -->
+    <!-- #                                                                # -->
+    <!-- ################################################################## -->
+
+
+    <Device id="digitalInput" type="sensor">
+        <Name>Digital Input</Name>
+        <ConfigUI>
+
+
+            <!-- ################### Raspberry Pi Host #################### -->
+
+
+            <!-- digitalInput hostTitle-->
+            <Field id="hostTitle" type="label" alignText="center">
+                <Label>Select Raspberry Pi Host</Label>
+            </Field>
+
+
+            <!-- digitalInput hostAddress -->
+            <Field id="hostAddress" type="textfield" defaultValue="raspi4b-io.local">
+                <Label>Host Address (FQDN or IPv4):</Label>
+            </Field>
+
+
+            <!-- digitalInput portNumber -->
+            <Field id="portNumber" type="textfield" defaultValue="8888">
+                <Label>Port Number (1024-65535):</Label>
+            </Field>
+
+
+            <!-- digitalInput hostId -->
+            <Field id="hostId" type="textfield" defaultValue="">
+                <Label>Host Id:</Label>
+            </Field>
+
+            <Field id="hostIdLabel" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true">
+                <Label>The Host Id is a unique code used to identify the host in the indigo device address.  It may be user specified or left blank for automatic assignment. Automatically assigned id's are extracted from the host FQDN ("name-id.domainName"), or simply set to "pi".</Label>
+            </Field>
+
+
+            <!-- ################## I/O Device Selection ################## -->
+
+
+            <!-- digitalInput selectionSeparator -->
+            <Field id="selectionSeparator" type="separator"> </Field>
+
+            <Field id="selectionTitle" type="label" alignText="center">
+                <Label>Select I/O Device</Label>
+            </Field>
+
+
+            <!-- digitalInput ioDevType -->
+            <Field id="ioDevType" type="menu" defaultValue="pigpio">
+                <Label>I/O Device Type:</Label>
+                <List>
+                    <Option value="pigpio">Built-in Raspberry Pi GPIO</Option>
+                    <Option value="MCP23008">MCP23008 I2C 8-Bit I/O Expander</Option>
+                    <Option value="MCP23017">MCP23017 I2C 16-Bit I/O Expander</Option>
+                    <Option value="MCP23S08">MCP23S08 SPI 8-Bit I/O Expander</Option>
+                    <Option value="MCP23S17">MCP23S17 SPI 16-Bit I/O Expander</Option>
+                </List>
+            </Field>
+
+
+            <!-- digitalInput gpioNumber -->
+            <Field id="gpioNumber" type="menu" defaultValue="17" visibleBindingId="ioDevType" visibleBindingValue="pigpio">
+                <Label>BCM GPIO Number:</Label>
+                <List>
+                    <Option value="5">GPIO 5</Option>
+                    <Option value="6">GPIO 6</Option>
+                    <Option value="12">GPIO 12</Option>
+                    <Option value="13">GPIO 13</Option>
+                    <Option value="16">GPIO 16</Option>
+                    <Option value="17">GPIO 17</Option>
+                    <Option value="18">GPIO 18</Option>
+                    <Option value="19">GPIO 19</Option>
+                    <Option value="20">GPIO 20</Option>
+                    <Option value="21">GPIO 21</Option>
+                    <Option value="22">GPIO 22</Option>
+                    <Option value="23">GPIO 23</Option>
+                    <Option value="24">GPIO 24</Option>
+                    <Option value="25">GPIO 25</Option>
+                    <Option value="26">GPIO 26</Option>
+                    <Option value="27">GPIO 27</Option>
+                </List>
+            </Field>
+
+
+            <!-- digitalInput i2cAddress -->
+            <Field id="i2cAddress" type="menu" defaultValue="0x20" visibleBindingId="ioDevType" visibleBindingValue="(MCP23008, MCP23017)">
+                <Label>I2C Address:</Label>
+                <List>
+                    <Option value="0x20">0x20</Option>
+                    <Option value="0x21">0x21</Option>
+                    <Option value="0x22">0x22</Option>
+                    <Option value="0x23">0x23</Option>
+                    <Option value="0x24">0x24</Option>
+                    <Option value="0x25">0x25</Option>
+                    <Option value="0x26">0x26</Option>
+                    <Option value="0x27">0x27</Option>
+                </List>
+            </Field>
+
+
+            <!-- digitalInput spiChannel -->
+            <Field id="spiChannel" type="menu" defaultValue="0" visibleBindingId="ioDevType" visibleBindingValue="(MCP23S08, MCP23S17)">
+                <Label>SPI Channel:</Label>
+                <List>
+                    <Option value="0">Channel 0</Option>
+                    <Option value="1">Channel 1</Option>
+                </List>
+            </Field>
+
+
+            <!-- digitalInput spiDeviceAddress -->
+            <Field id="spiDevAddress" type="textfield" defaultValue="0x20" hidden="true"> </Field>
+
+            <Field id="spiDevAddress4" type="menu" defaultValue="0x20" visibleBindingId="ioDevType" visibleBindingValue="MCP23S08">
+                <Label>SPI Device Address:</Label>
+                <List>
+                    <Option value="0x20">0x20</Option>
+                    <Option value="0x21">0x21</Option>
+                    <Option value="0x22">0x22</Option>
+                    <Option value="0x23">0x23</Option>
+                </List>
+            </Field>
+
+            <Field id="spiDevAddress8" type="menu" defaultValue="0x20" visibleBindingId="ioDevType" visibleBindingValue="MCP23S17">
+                <Label>SPI Device Address:</Label>
+                <List>
+                    <Option value="0x20">0x20</Option>
+                    <Option value="0x21">0x21</Option>
+                    <Option value="0x22">0x22</Option>
+                    <Option value="0x23">0x23</Option>
+                    <Option value="0x24">0x24</Option>
+                    <Option value="0x25">0x25</Option>
+                    <Option value="0x26">0x26</Option>
+                    <Option value="0x27">0x27</Option>
+                </List>
+            </Field>
+
+
+            <!-- digitalInput ioPort -->
+            <Field id="ioPort" type="menu" defaultValue="a" visibleBindingId="ioDevType" visibleBindingValue="(MCP23017, MCP23S17)">
+                <Label>16-Bit I/O Expander Port:</Label>
+                <List>
+                    <Option value="a">Port A</Option>
+                    <Option value="b">Port B</Option>
+                </List>
+            </Field>
+
+
+            <!-- digitalInput bitNumber -->
+            <Field id="bitNumber" type="menu" defaultValue="0" visibleBindingId="ioDevType" visibleBindingValue="(MCP23008, MCP23017, MCP23S08, MCP23S17)">
+                <Label>I/O Port Bit Number:</Label>
+                <List>
+                    <Option value="0">Bit 0</Option>
+                    <Option value="1">Bit 1</Option>
+                    <Option value="2">Bit 2</Option>
+                    <Option value="3">Bit 3</Option>
+                    <Option value="4">Bit 4</Option>
+                    <Option value="5">Bit 5</Option>
+                    <Option value="6">Bit 6</Option>
+                    <Option value="7">Bit 7</Option>
+                </List>
+            </Field>
+
+
+            <!-- ############### Input Device Configuration ############### -->
+
+
+             <!-- digitalInput configSeparator -->
+            <Field id="configSeparator" type="separator"> </Field>
+
+            <Field id="configTitle" type="label" alignText="center">
+                <Label>Configure Input Device</Label>
+            </Field>
+
+
+            <!-- digitalInput invert -->
+            <Field id="invert" type="checkbox" defaultValue="false">
+                <Label>Invert on/off State:</Label>
+            </Field>
+
+            <Field id="invertLabel" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true">
+                <Label>If checked, the on/off state is set to on for logic low and to off for logic high.</Label>
+            </Field>
+
+
+            <!-- digitalInput pullup -->
+            <Field id="pullup" type="textfield" defaultValue="off" hidden="true"> </Field>
+
+            <Field id="pullup1" type="menu" defaultValue="off" visibleBindingId="ioDevType" visibleBindingValue="pigpio">
+                <Label>Internal Input Bias:</Label>
+                <List>
+                    <Option value="off">Open (no bias)</Option>
+                    <Option value="up">Pull up to logic high</Option>
+                    <Option value="down">Pull down to logic low</Option>
+                </List>
+            </Field>
+
+            <Field id="pullup1Label" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true" visibleBindingId="ioDevType" visibleBindingValue="pigpio">
+                <Label>Open applies no bias to the digital input. Pull up or down biases the input to logic high or low through an internal resistor.</Label>
+            </Field>
+
+            <Field id="pullup2" type="menu" defaultValue="off" visibleBindingId="ioDevType" visibleBindingValue="(MCP23008, MCP23017, MCP23S08, MCP23S17)">
+                <Label>Internal Input Bias:</Label>
+                <List>
+                    <Option value="off">Open (no bias)</Option>
+                    <Option value="up">Pull up to logic high</Option>
+                </List>
+            </Field>
+
+            <Field id="pullup2Label" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true" visibleBindingId="ioDevType" visibleBindingValue="(MCP23008, MCP23017, MCP23S08, MCP23S17)">
+                <Label>Open applies no bias to the digital input. Pull up biases the input to logic high through an internal resistor.</Label>
+            </Field>
+
+            <!-- digitalInput bitRate -->
+            <Field id="bitRate" type="textfield" defaultValue="2000" visibleBindingId="ioDevType" visibleBindingValue="(MCP23S08, MCP23S17)">
+                <Label>SPI Bit Rate (100-10000 kb/s):</Label>
+            </Field>
+
+            <Field id="bitRateLabel" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true" visibleBindingId="ioDevType" visibleBindingValue="(MCP23S08, MCP23S17)">
+                <Label>SPI bus data transfer rate for this device.  The bit rate in kb/s is usually equal to the SPI clock rate in kHz.</Label>
+            </Field>
+
+
+            <!-- ############# Interrupt and Polling Options ############## -->
+
+
+             <!-- digitalInput interruptSeparator -->
+            <Field id="interruptSeparator" type="separator"> </Field>
+
+            <Field id="interruptTitle" type="label" alignText="center">
+                <Label>Select Interrupt and Polling Options</Label>
+            </Field>
+
+
+            <!-- digitalInput callback -->
+            <Field id="callback" type="checkbox" defaultValue="false" visibleBindingId="ioDevType" visibleBindingValue="pigpio">
+                <Label>Use GPIO Callback:</Label>
+            </Field>
+
+            <Field id="callbackLabel" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true" visibleBindingId="ioDevType" visibleBindingValue="pigpio">
+                <Label>The GPIO callback updates/logs the device state on an input state change.  It eliminates the need for polling to detect changes.  It also enables interrupt relay and debounce filtering if requested.</Label>
+            </Field>
+
+
+            <!-- digitalInput bounceFilter -->
+            <Field id="bounceFilter" type="checkbox" defaultValue="false" visibleBindingId="callback" visibleBindingValue="true">
+                <Label>Enable Contact Bounce Filter:</Label>
+            </Field>
+
+            <Field id="bounceFilterLabel" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true" visibleBindingId="callback" visibleBindingValue="true">
+                <Label>The bounce filter rejects callback state changes that are separated by less than the bounce time.  It is used to eliminate multiple responses from bouncing mechanical switches/relays.</Label>
+            </Field>
+
+            <Field id="bounceTime" type="textfield" defaultValue="100" visibleBindingId="bounceFilter" visibleBindingValue="true">
+                <Label>Bounce Time (µsec):</Label>
+            </Field>
+
+            <Field id="bounceTimeLabel" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true" visibleBindingId="bounceFilter" visibleBindingValue="true">
+                <Label>The bounce time must be tuned to each switch/application.  If too low, bouncing states will be processed normally.  If too high, valid state changes could be rejected.</Label>
+            </Field>
+
+            <Field id="logBounce" type="checkbox" defaultValue="false" visibleBindingId="bounceFilter" visibleBindingValue="true">
+                <Label>Log Bounce Filter Warnings:</Label>
+            </Field>
+
+
+            <!-- digitalInput relayInterrupts -->
+            <Field id="relayInterrupts" type="checkbox" defaultValue="false" visibleBindingId="callback" visibleBindingValue="true">
+                <Label>Relay Hardware Interrupts:</Label>
+            </Field>
+
+            <Field id="relayInterruptsLabel" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true" visibleBindingId="callback" visibleBindingValue="true">
+                <Label>Indicates that this GPIO input is connected to hardware interrupt outputs from one or more interrupt devices.  An transition on this GPIO causes the callback method to relay the interrupt to all interrupt devices.</Label>
+            </Field>
+
+
+            <!-- digitalInput hardwareInterrupt -->
+            <Field id="hardwareInterrupt" type="checkbox" defaultValue="false" visibleBindingId="ioDevType" visibleBindingValue="(MCP23008, MCP23017, MCP23S08, MCP23S17)">
+                <Label>Enable Hardware Interrupt:</Label>
+            </Field>
+
+            <Field id="hardwareInterruptLabel" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true" visibleBindingId="hardwareInterrupt" visibleBindingValue="true">
+                <Label>Enabling hardware interrupt raises a hardware interrupt output on an input state change.  The interrupt output must be connected to a GPIO input that is configured for callback and interrupt relay.</Label>
+            </Field>
+
+            <Field id="interruptRelayGPIO" type="menu" visibleBindingId="hardwareInterrupt" visibleBindingValue="true">
+                <Label>Select Interrupt Relay GPIO:</Label>
+                <List class="self" method="getGPIORelayDevices" dynamicReload="yes"/>
+            </Field>
+
+
+            <!-- digitalInput polling -->
+            <Field id="polling" type="checkbox" defaultValue="false">
+                <Label>Enable Input Polling:</Label>
+            </Field>
+
+            <Field id="pollingLabel" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true">
+                <Label>Read the input at regular intervals and log the input state if it has changed.</Label>
+            </Field>
+
+            <Field id="pollingInterval" type="textfield" defaultValue="0" visibleBindingId="polling" visibleBindingValue="true">
+                <Label>Polling Interval (seconds):</Label>
+            </Field>
+
+            <Field id="intervalLabel" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true" visibleBindingId="polling" visibleBindingValue="true">
+                <Label>Setting the interval to 0.0 reads the input in each pass through the run loop.  The actual polling interval depends on the run loop time.</Label>
+            </Field>
+
+
+            <!-- digitalInput logAll -->
+            <Field id="logAll" type="checkbox" defaultValue="false" visibleBindingId="polling" visibleBindingValue="true">
+                <Label>Log All Polling Results:</Label>
+            </Field>
+
+            <Field id="logAllLabel" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true" visibleBindingId="polling" visibleBindingValue="true">
+                <Label>Log the input state after each poll, regardless of change.  By default, only changed states are logged.</Label>
+            </Field>
+
+
+        </ConfigUI>
+    </Device>
+
+
+    <!-- ################################################################## -->
+    <!-- #                                                                # -->
+    <!-- #                     Digital Output Device                      # -->
+    <!-- #                                                                # -->
+    <!-- ################################################################## -->
+
+
+    <Device id="digitalOutput" type="relay">
+        <Name>Digital Output</Name>
+        <ConfigUI>
+
+
+            <!-- ################### Raspberry Pi Host #################### -->
+
+
+            <!-- digitalOutput hostTitle -->
+            <Field id="hostTitle" type="label" alignText="center">
+                <Label>Select Raspberry Pi Host</Label>
+            </Field>
+
+
+             <!-- digitalOutput hostAddress -->
+            <Field id="hostAddress" type="textfield" defaultValue="raspi4b-io.local">
+                <Label>Host Address (FQDN or IPv4):</Label>
+            </Field>
+
+
+            <!-- digitalOutput portNumber -->
+            <Field id="portNumber" type="textfield" defaultValue="8888">
+                <Label>Port Number (1024-65535):</Label>
+            </Field>
+
+
+             <!-- digitalOutput hostId -->
+            <Field id="hostId" type="textfield" defaultValue="">
+                <Label>Host Id:</Label>
+            </Field>
+
+            <Field id="hostIdLabel" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true">
+                <Label>The Host Id is a unique code used to identify the host in the indigo device address.  It may be user specified or left blank for automatic assignment. Automatically assigned id's are extracted from the host FQDN ("name-id.domainName"), or simply set to "pi".</Label>
+            </Field>
+
+
+            <!-- ################## I/O Device Selection ################## -->
+
+
+             <!-- digitalOutput selectionSeparator -->
+            <Field id="selectionSeparator" type="separator"> </Field>
+
+            <Field id="selectionTitle" type="label" alignText="center">
+                <Label>Select I/O Device</Label>
+            </Field>
+
+
+             <!-- digitalOutput ioDevType -->
+            <Field id="ioDevType" type="menu" defaultValue="pigpio">
+                <Label>I/O Device Type:</Label>
+                <List>
+                    <Option value="pigpio">Built-in Raspberry Pi GPIO</Option>
+                    <Option value="MCP23008">MCP23008 I2C 8-Bit I/O Expander</Option>
+                    <Option value="MCP23017">MCP23017 I2C 16-Bit I/O Expander</Option>
+                    <Option value="MCP23S08">MCP23S08 SPI 8-Bit I/O Expander</Option>
+                    <Option value="MCP23S17">MCP23S17 SPI 16-Bit I/O Expander</Option>
+                </List>
+            </Field>
+
+
+             <!-- digitalOutput gpioNumber -->
+            <Field id="gpioNumber" type="menu" defaultValue="17" visibleBindingId="ioDevType" visibleBindingValue="pigpio">
+                <Label>BCM GPIO Number:</Label>
+                <List>
+                    <Option value="5">GPIO 5</Option>
+                    <Option value="6">GPIO 6</Option>
+                    <Option value="12">GPIO 12</Option>
+                    <Option value="13">GPIO 13</Option>
+                    <Option value="16">GPIO 16</Option>
+                    <Option value="17">GPIO 17</Option>
+                    <Option value="18">GPIO 18</Option>
+                    <Option value="19">GPIO 19</Option>
+                    <Option value="20">GPIO 20</Option>
+                    <Option value="21">GPIO 21</Option>
+                    <Option value="22">GPIO 22</Option>
+                    <Option value="23">GPIO 23</Option>
+                    <Option value="24">GPIO 24</Option>
+                    <Option value="25">GPIO 25</Option>
+                    <Option value="26">GPIO 26</Option>
+                    <Option value="27">GPIO 27</Option>
+                </List>
+            </Field>
+
+
+             <!-- digitalOutput i2cAddress -->
+            <Field id="i2cAddress" type="menu" defaultValue="0x20" visibleBindingId="ioDevType" visibleBindingValue="(MCP23008, MCP23017)">
+                <Label>I2C Address:</Label>
+                <List>
+                    <Option value="0x20">0x20</Option>
+                    <Option value="0x21">0x21</Option>
+                    <Option value="0x22">0x22</Option>
+                    <Option value="0x23">0x23</Option>
+                    <Option value="0x24">0x24</Option>
+                    <Option value="0x25">0x25</Option>
+                    <Option value="0x26">0x26</Option>
+                    <Option value="0x27">0x27</Option>
+                </List>
+            </Field>
+
+
+             <!-- digitalOutput spiChannel -->
+            <Field id="spiChannel" type="menu" defaultValue="0" visibleBindingId="ioDevType" visibleBindingValue="(MCP23S08, MCP23S17)">
+                <Label>SPI Channel:</Label>
+                <List>
+                    <Option value="0">Channel 0</Option>
+                    <Option value="1">Channel 1</Option>
+                </List>
+            </Field>
+
+
+            <!-- digitalOutput spiDevAddress -->
+            <Field id="spiDevAddress" type="textfield" defaultValue="0x20" hidden="true"> </Field>
+
+            <Field id="spiDevAddress4" type="menu" defaultValue="0x20" visibleBindingId="ioDevType" visibleBindingValue="MCP23S08">
+                <Label>SPI Device Address:</Label>
+                <List>
+                    <Option value="0x20">0x20</Option>
+                    <Option value="0x21">0x21</Option>
+                    <Option value="0x22">0x22</Option>
+                    <Option value="0x23">0x23</Option>
+                </List>
+            </Field>
+
+            <Field id="spiDevAddress8" type="menu" defaultValue="0x20" visibleBindingId="ioDevType" visibleBindingValue="MCP23S17">
+                <Label>SPI Device Address:</Label>
+                <List>
+                    <Option value="0x20">0x20</Option>
+                    <Option value="0x21">0x21</Option>
+                    <Option value="0x22">0x22</Option>
+                    <Option value="0x23">0x23</Option>
+                    <Option value="0x24">0x24</Option>
+                    <Option value="0x25">0x25</Option>
+                    <Option value="0x26">0x26</Option>
+                    <Option value="0x27">0x27</Option>
+                </List>
+            </Field>
+
+
+            <!-- digitalOutput ioPort -->
+            <Field id="ioPort" type="menu" defaultValue="a" visibleBindingId="ioDevType" visibleBindingValue="(MCP23017, MCP23S17)">
+                <Label>16-Bit I/O Expander Port:</Label>
+                <List>
+                    <Option value="a">Port A</Option>
+                    <Option value="b">Port B</Option>
+                </List>
+            </Field>
+
+
+            <!-- digitalOutput bitNumber -->
+            <Field id="bitNumber" type="menu" defaultValue="0" visibleBindingId="ioDevType" visibleBindingValue="(MCP23008, MCP23017, MCP23S08, MCP23S17)">
+                <Label>I/O Port Bit Number:</Label>
+                <List>
+                    <Option value="0">Bit 0</Option>
+                    <Option value="1">Bit 1</Option>
+                    <Option value="2">Bit 2</Option>
+                    <Option value="3">Bit 3</Option>
+                    <Option value="4">Bit 4</Option>
+                    <Option value="5">Bit 5</Option>
+                    <Option value="6">Bit 6</Option>
+                    <Option value="7">Bit 7</Option>
+                </List>
+            </Field>
+
+
+            <!-- ############## Output Device Configuration ############### -->
+
+
+            <!-- digitalOutput configSeparator -->
+            <Field id="configSeparator" type="separator"> </Field>
+
+            <Field id="configTitle" type="label" alignText="center">
+                <Label>Configure Output Device</Label>
+            </Field>
+
+
+            <!-- digitalOutput momentary -->
+            <Field id="momentary" type="checkbox" defaultValue="false">
+                <Label>Momentary Turn-on:</Label>
+            </Field>
+
+            <Field id="turnOffDelay" type="textfield" defaultValue="0" visibleBindingId="momentary" visibleBindingValue="true">
+                <Label>Turn-off Delay (0-10 seconds):</Label>
+            </Field>
+
+            <Field id="delayLabel" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true" visibleBindingId="momentary" visibleBindingValue="true">
+                <Label>A turn-off delay of 0 seconds results in an actual delay of about 0.25 seconds.</Label>
+            </Field>
+
+
+            <!-- digitalOutput pwm -->
+            <Field id="pwm" type="checkbox" defaultValue="false" visibleBindingId="ioDevType" visibleBindingValue="pigpio">
+                <Label>Pulse Width Modulation (PWM):</Label>
+            </Field>
+
+            <Field id="frequency" type="textfield" defaultValue="100" visibleBindingId="pwm" visibleBindingValue="true">
+                <Label>PWM Frequency (1-8000 Hertz):</Label>
+            </Field>
+
+            <Field id="frequencyLabel" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true" visibleBindingId="pwm" visibleBindingValue="true">
+                <Label>The frequency actually used will be one of 16 discrete values that is closest to the frequency specified.  See the pigpio library documentation.</Label>
+            </Field>
+
+
+            <Field id="dutyCycle" type="textfield" defaultValue="50" visibleBindingId="pwm" visibleBindingValue="true">
+                <Label>PWM Duty Cycle (0-100 percent):</Label>
+            </Field>
+
+            <!-- digitalOutput bitRate -->
+            <Field id="bitRate" type="textfield" defaultValue="2000" visibleBindingId="ioDevType" visibleBindingValue="(MCP23S08, MCP23S17)">
+                <Label>SPI Bit Rate (100-10000 kb/s):</Label>
+            </Field>
+
+            <Field id="bitRateLabel" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true">
+                <Label>SPI bus data transfer rate for this device.  The bit rate in kb/s is usually equal to the SPI clock rate in kHz.</Label>
+            </Field>
+
+
+            <!-- #################### Polling Options ##################### -->
+
+
+            <!-- digitalOutput pollingSeparator -->
+            <Field id="pollingSeparator" type="separator"> </Field>
+
+            <Field id="pollingTitle" type="label" alignText="center">
+                <Label>Select Polling Options</Label>
+            </Field>
+
+
+            <!-- digitalOutput polling -->
+            <Field id="polling" type="checkbox" defaultValue="false">
+                <Label>Enable Output Polling:</Label>
+            </Field>
+
+            <Field id="pollingLabel" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true">
+                <Label>Read the output at regular intervals and log the output state if it has changed.  With the log all option, output polling is useful to periodically record the output state regardless of change.</Label>
+            </Field>
+
+            <Field id="pollingInterval" type="textfield" defaultValue="0" visibleBindingId="polling" visibleBindingValue="true">
+                <Label>Polling Interval (seconds):</Label>
+            </Field>
+
+            <Field id="intervalLabel" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true" visibleBindingId="polling" visibleBindingValue="true">
+                <Label>Setting the interval to 0.0 reads the output in each pass through the run loop.  The actual polling interval depends on the run loop time.</Label>
+            </Field>
+
+
+            <!-- digitalOutput logAll -->
+            <Field id="logAll" type="checkbox" defaultValue="true" hidden="true"> </Field>
+
+            <Field id="logAllLabel" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true" visibleBindingId="polling" visibleBindingValue="true">
+                <Label>Log the output state after each poll, regardless of change.  By default, only changed states are logged.</Label>
+            </Field>
+
+
+        </ConfigUI>
+    </Device>
+</Devices>
+

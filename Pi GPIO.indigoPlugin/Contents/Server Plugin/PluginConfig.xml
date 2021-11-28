@@ -1,0 +1,98 @@
+<?xml version="1.0"?>
+<!--
+ PACKAGE:  indigo plugin interface to
+  MODULE:  PluginConfig.xml
+   TITLE:  Define and initialize options (PluginConfig.xml)
+FUNCTION:  PluginConfig.xml defines the structure of the
+           configuration GUI, specifies GUI labels, and sets default values.
+   USAGE:  PluginConfig.xml is read by the indigo server during plugin startup.
+  AUTHOR:  papamac
+ VERSION:  1.0.0
+    DATE:  May 23, 2020
+-->
+
+<PluginConfig>
+
+    <!-- ############### Logging and Polling Status Options ############### -->
+
+    <Field id="loggingTitle" type="label" alignText="center">
+        <Label>Select Logging and Polling Status Options</Label>
+    </Field>
+
+    <Field id="loggingLevel" type="menu" defaultValue="INFO">
+        <Label>Logging Level:</Label>
+        <List>
+            <Option value="THREAD">Thread Debug</Option>
+            <Option value="DEBUG">Debug</Option>
+            <Option value="INFO">Info</Option>
+            <Option value="WARNING">Warning</Option>
+            <Option value="ERROR">Error</Option>
+            <Option value="CRITICAL">Critical</Option>
+        </List>
+    </Field>
+
+    <Field id="thread" type="label" alignWithControl="true" fontColor="darkgray" visibleBindingId="loggingLevel" visibleBindingValue="THREAD">
+        <Label>Log Thread Debug Messages and Higher</Label>
+    </Field>
+
+    <Field id="debug" type="label" alignWithControl="true" fontColor="darkgray" visibleBindingId="loggingLevel" visibleBindingValue="DEBUG">
+        <Label>Log Debug Messages and Higher</Label>
+    </Field>
+
+    <Field id="info" type="label" alignWithControl="true" fontColor="darkgray" visibleBindingId="loggingLevel" visibleBindingValue="INFO">
+        <Label>Log Info Messages and Higher</Label>
+    </Field>
+
+    <Field id="warning" type="label" alignWithControl="true" fontColor="darkgray" visibleBindingId="loggingLevel" visibleBindingValue="WARNING">
+        <Label>Log Warning Messages and Higher</Label>
+    </Field>
+
+    <Field id="error" type="label" alignWithControl="true" fontColor="darkgray" visibleBindingId="loggingLevel" visibleBindingValue="ERROR">
+        <Label>Log Error and Critical Messages Only</Label>
+    </Field>
+
+    <Field id="critical" type="label" alignWithControl="true" fontColor="darkgray" visibleBindingId="loggingLevel" visibleBindingValue="CRITICAL">
+        <Label>Log Critical Messages Only</Label>
+    </Field>
+
+
+    <Field id="monitorStatus" type="checkbox" defaultValue="false">
+        <Label>Monitor Polling Status:</Label>
+    </Field>
+
+    <Field id="statusLabel" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true">
+        <Label>Compute and log the average polling interval and rate over the period of the status interval.</Label>
+    </Field>
+
+    <Field id="statusInterval" type="textfield" defaultValue="10.0" visibleBindingId="monitorStatus" visibleBindingValue="true">
+        <Label>Status Monitoring Interval (minutes):</Label>
+    </Field>
+
+    <!-- ######################## Advanced Options ######################## -->
+
+
+    <Field id="advancedSeparator" type="separator"> </Field>
+
+    <Field id="advancedTitle" type="label" alignText="center">
+        <Label>Select Advanced Options</Label>
+    </Field>
+
+
+    <Field id="runLoopSleepTime" type="textfield" defaultValue="0.1">
+        <Label>Run Loop Sleep Time (seconds):</Label>
+    </Field>
+
+     <Field id="sleepLabel" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true">
+        <Label>The run loop sleep time defines the minimum polling interval for all devices regardless of the individual polling interval settings.  Setting it too low, however, consumes significant computing resources.  The default value balances the minimum polling interval and computer utilization.</Label>
+    </Field>
+
+
+    <Field id="checkSPI" type="checkbox" defaultValue="false">
+        <Label>Check SPI Integrity:</Label>
+    </Field>
+
+    <Field id="checkLabel" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true">
+        <Label>Check SPI integrity by repeating each SPI device read.  Issue a warning if the the results of the consecutive reads differ.  If this occurs, it could be an indication that the SPI bit rate is too high for the device.</Label>
+    </Field>
+
+</PluginConfig>

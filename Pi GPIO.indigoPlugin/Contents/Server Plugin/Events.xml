@@ -1,0 +1,44 @@
+<?xml version="1.0"?>
+<!--
+###############################################################################
+#                                                                             #
+#                              MODULE Events.xml                              #
+#                                                                             #
+###############################################################################
+
+ PACKAGE:  indigo plugin bridge to Nu Tech AlarmDecoder alarm panel interface
+           devices (AlarmDecoder-Bridge)
+  MODULE:  Events.xml
+   TITLE:  Define and initialize AlarmDecoder trigger objects (Events.xml)
+FUNCTION:  Events.xml defines the structure of AlarmDecoder trigger objects,
+           specifies GUI labels, and sets default values.
+   USAGE:  Events.xml is read by the indigo server during plugin startup.
+ AUTHORS:  Originally developed and copyrighted by Richard Perlman.
+ VERSION:  1.3.1
+    DATE:  February 22, 2021
+
+
+CHANGE LOG:
+
+v1.3.1   2/22/2021  Update comments.
+
+-->
+
+<Events>
+
+    <Event id="limitFault">
+        <Name>Limit Check Fault</Name>
+        <ConfigUI>
+
+            <Field id="indigoTrigger" type="menu" defaultValue="anyFault">
+                <Label>Limit Check Fault:</Label>
+                <List>
+                    <Option value="anyFault">Any Limit Fault</Option>
+                    <Option value="lowFault">Low Limit Fault</Option>
+                    <Option value="highFault">High Limit Fault</Option>
+                </List>
+            </Field>
+
+        </ConfigUI>
+    </Event>
+</Events>
