@@ -5,16 +5,19 @@
 #                                                                             #
 ###############################################################################
 """
- PACKAGE:  Raspberry Pi General Purpose Input/Output for indigo (Pi GPIO)
+ PACKAGE:  Raspberry Pi General Purpose Input/Output for Indigo (Pi GPIO)
   MODULE:  plugin.py
-   TITLE:  primary Python module in the Pi GPIO indigo plugin bundle
-FUNCTION:  plugin is a client that can connect to multiple
-           servers (instances of ) and interface with indigo GUIs and
-           device objects.
-   USAGE:  plugin.py is included in a standard indigo plugin bundle.
+   TITLE:  primary Python module in the Pi GPIO.indigoPlugin bundle
+FUNCTION:  plugin.py defines the Plugin class, with standard methods that
+           interface to the indigo server and manage indigo device objects.
+           It instantiates a pigpioDevices object for each indigo device object
+           and invokes pigpioDevices object methods to perform detailed device
+           functions.
+   USAGE:  plugin.py is included in the Pi GPIO.indigoPlugin bundle and its
+           methods are called by the indigo server.
   AUTHOR:  papamac
- VERSION:  1.0.0
-    DATE:  January 1, 2022
+ VERSION:  0.5.2
+    DATE:  January 19, 2022
 
 
 UNLICENSE:
@@ -45,18 +48,63 @@ OTHER DEALINGS IN THE SOFTWARE.
 For more information, please refer to <http://unlicense.org/>
 
 
-DESCRIPTION:
+Pi GPIO SUMMARY DESCRIPTION:
 
-<https://abyz.me.uk/rpi/pigpio/>
-****************************** needs work *************************************
+Raspberry Pi is a powerful credit card sized computer with extensive General
+Purpose Input/Output (GPIO) capabilities that make it an ideal addition to an
+Indigo Home Automation System.  Physical analog and digital input/output
+devices, hosted on the Pi, are linked to Indigo device objects, giving Indigo
+the ability to sense the real world and manage it in near real time.  One or
+more Pi's connect to the Indigo host via wired or wireless ethernet.  Each Pi
+runs a pigpio daemon (written by joan2937) that manages the interface between
+the Pi GPIO's and this Pi GPIO plugin.
+
+See the README.md file in the top level PiGPIO folder for more functional
+details and operating instructions.  For details on the Raspberry Pi, its GPIO
+system, and joan2937's amazing pigpio library, please refer to:
+
+RPi computers:      <https://www.raspberrypi.com/products/
+RPi OS:             <https://www.raspberrypi.com/software/>
+RPi official doc's: <https://www.raspberrypi.com/documentation/computers/>
+RPi GPIO system :   <https://www.raspberrypi.com/documentation/computers
+                     /os.html#gpio-and-the-40-pin-header>
+pigpio library:     <https://abyz.me.uk/rpi/pigpio/>
+pigpio code:        <https://github.com/joan2937/pigpio/>
+
+
+plugin.py DESCRIPTION:
+
+plugin.py is the primary Python module in the Pi GPIO.indigoPlugin bundle.  It
+defines the Plugin class whose methods provide entry points into the plugin
+from the Indigo Plugin Host.  These methods, with access to the Indigo Server's
+object database, manage the definition, validation, instantiation, and state
+maintenance of Pi GPIO device objects.  For more details see the Plugin class
+docstring (below) and the following indigo documentation link:
+
+<https://wiki.indigodomo.com/doku.php?id=indigo_2021.1_documentation:plugin_guide>
+
 
 DEPENDENCIES/LIMITATIONS:
+
+Some issues have been reported using the pigpio daemon running on a Raspberry
+Pi 4 Model B (raspi4b).  The Pi GPIO plugin has been tested using several
+raspi4b's with no problems except a minor issue with the spi clock rate. The
+issue has been resolved with a (perhaps temporary) work-around that is
+described in the pigpioDevices module docstring.
 
 
 CHANGE LOG:
 
-"""
+Major changes to the Pi GPIO plugin are described in the CHANGES.md file in the
+top level PiGPIO folder.  Changes of lesser importance may be described in
+individual module docstrings if appropriate.
 
+0.5.0  11/28/2021  Fully functional beta version with incomplete documentation.
+0.5.1  11/29/2021  Force device stop/restart on a name change.
+0.5.2   1/19/2022  Use common IODEV_DATA dictionary to unambiguously identify
+                   a device's interface type (I2C, SPI, or None)
+
+"""
 ###############################################################################
 #                                                                             #
 #                             MODULE plugin.py                                #
@@ -65,8 +113,8 @@ CHANGE LOG:
 ###############################################################################
 
 __author__ = u'papamac'
-__version__ = u'1.0.0'
-__date__ = u'January 1, 2022'
+__version__ = u'0.5.1'
+__date__ = u'11/29/2021'
 
 from logging import getLogger, NOTSET
 
@@ -103,14 +151,15 @@ class Plugin(indigo.PluginBase):
     #                                    I                                    #
     #                                   III                                   #
     #                                                                         #
-    #               INITIALIZATION, STARTUP, AND RUN/STOP METHODS             #
+    #           INITIALIZATION, DEVICE START/STOP, AND RUN METHODS            #
     #                                                                         #
     # def __init__(self, pluginId, pluginDisplayName, pluginVersion,          #
     #              pluginPrefs):                                              #
     # def __del__(self)                                                       #
     # def startup(self)                                                       #
-    # def deviceStartComm(self, dev)                                          #
-    # def deviceStopComm(self, dev)                                           #
+    # def deviceStartComm(dev)                                                #
+    # def deviceStopComm(dev)                                                 #
+    # def didDeviceCommPropertyChange(oldDev, newDev)                         #
     # def runConcurrentThread(self)                                           #
     #                                                                         #
     ###########################################################################
@@ -123,7 +172,7 @@ class Plugin(indigo.PluginBase):
                                    pluginVersion, pluginPrefs)
 
     def __del__(self):
-        LOG.threaddebug(u'Plugin.__del__ called')
+        LOG.threaddebug(u'__del__ called')
         indigo.PluginBase.__del__(self)
 
     # Indigo plugin.py standard public instance methods:
@@ -132,8 +181,7 @@ class Plugin(indigo.PluginBase):
         self.indigo_log_handler.setLevel(NOTSET)
         level = self.pluginPrefs[u'loggingLevel']
         LOG.setLevel(u'THREADDEBUG' if level == u'THREAD' else level)
-        LOG.threaddebug(u'Plugin.startup called')
-        LOG.debug(self.pluginPrefs)
+        LOG.threaddebug(u'startup called')
 
         # Set pigpioDevices.PiGPIODevice class attributes from pluginPrefs.
 
@@ -145,21 +193,35 @@ class Plugin(indigo.PluginBase):
 
     @staticmethod
     def deviceStartComm(dev):
-        LOG.threaddebug(u'Plugin.deviceStartComm called "%s"', dev.name)
+        LOG.threaddebug(u'deviceStartComm called "%s"', dev.name)
         pigpioDevices.start(dev)
 
     @staticmethod
     def deviceStopComm(dev):
-        LOG.threaddebug(u'Plugin.deviceStopComm called "%s"', dev.name)
-        ioDev = pigpioDevices.get(dev)
+        LOG.threaddebug(u'deviceStopComm called "%s"', dev.name)
+        ioDev = pigpioDevices.ioDevices.get(dev.id)
         if ioDev:
             ioDev.stop()
 
+    @staticmethod
+    def didDeviceCommPropertyChange(oldDev, newDev):
+        """
+        By default, changing a device's plugin properties causes the Indigo
+        server to stop the device and then restart it.  This method forces a
+        stop/restart when either the pluginProps or the device name changes.
+        Stopping/restarting on a name change avoids complications in the
+        pigpioDevices PiGPIODevice class which uses the device name at the
+        time of initialization.
+        """
+        devChanged = (oldDev.pluginProps != newDev.pluginProps
+                      or oldDev.name != newDev.name)
+        return devChanged
+
     def runConcurrentThread(self):
-        LOG.threaddebug(u'Plugin.runConcurrentThread called')
+        LOG.threaddebug(u'runConcurrentThread called')
         while True:
             for dev in indigo.devices.iter(u'self'):
-                ioDev = pigpioDevices.get(dev)
+                ioDev = pigpioDevices.ioDevices.get(dev.id)
                 if ioDev:
                     ioDev.poll()
             self.sleep(float(self.pluginPrefs[u'runLoopSleepTime']))
@@ -178,8 +240,6 @@ class Plugin(indigo.PluginBase):
     #                                                                         #
     #                      CONFIG UI VALIDATION METHODS                       #
     #                                                                         #
-    #     Primary indigo validation methods:                                  #
-    #                                                                         #
     # def validatePrefsConfigUi(self, valuesDict)                             #
     # def validateDeviceConfigUi(self, valuesDict, typeId, devId)             #
     #                                                                         #
@@ -187,7 +247,7 @@ class Plugin(indigo.PluginBase):
 
     @staticmethod
     def validatePrefsConfigUi(valuesDict):
-        LOG.threaddebug(u'Plugin.validatePrefsConfigUi called')
+        LOG.threaddebug(u'validatePrefsConfigUi called')
         errors = indigo.Dict()
 
         # Set logging level.
@@ -234,12 +294,12 @@ class Plugin(indigo.PluginBase):
     @staticmethod
     def validateDeviceConfigUi(valuesDict, typeId, devId):
         dev = indigo.devices[devId]
-        LOG.threaddebug(u'Plugin.validateDeviceConfigUi called "%s"; '
+        LOG.threaddebug(u'validateDeviceConfigUi called "%s"; '
                         u'configured = %s', dev.name, dev.configured)
         errors = indigo.Dict()
+
         ioDevType = valuesDict[u'ioDevType']
-        spiDevTypes = (u'MCP23S08', u'MCP23S17', u'MCP3204', u'MCP3208',
-                       u'MCP4821', u'MCP4822')
+        interface = pigpioDevices.IODEV_DATA[ioDevType][1]
 
         # Validation of common properties for all device types:
 
@@ -272,7 +332,7 @@ class Plugin(indigo.PluginBase):
 
         # Validation of properties for SPI devices:
 
-        if ioDevType in spiDevTypes:
+        if interface is pigpioDevices.SPI:
             try:  # Check bitRate.
                 rate = float(valuesDict[u'bitRate'])
             except ValueError:
@@ -393,7 +453,10 @@ class Plugin(indigo.PluginBase):
             if ioDevType == u'pigpio':  # gpio device.
                 address += u'.g' + valuesDict[u'gpioNumber']
             else:
-                if ioDevType in spiDevTypes:  # spi device.
+                if interface is pigpioDevices.I2C:  # i2c device.
+                    address += u'.i' + valuesDict[u'i2cAddress'][2:]
+
+                elif interface is pigpioDevices.SPI:  # spi device.
                     address += u'.s' + valuesDict[u'spiChannel']
                     if u'S' in ioDevType:
                         spiDevAddress4 = valuesDict[u'spiDevAddress4']
@@ -401,8 +464,6 @@ class Plugin(indigo.PluginBase):
                         spiDevAddress = max(spiDevAddress4, spiDevAddress8)
                         valuesDict[u'spiDevAddress'] = spiDevAddress
                         address += u':%s' % spiDevAddress[2:]
-                else:  # i2c device.
-                    address += u'.i' + valuesDict[u'i2cAddress'][2:]
 
                 if typeId == u'analogInput':
                     adcChannel2 = valuesDict[u'adcChannel2']
@@ -487,8 +548,8 @@ class Plugin(indigo.PluginBase):
     #                                                                         #
     #                         ACTION CALLBACK METHODS                         #
     #                                                                         #
-    # def read(self, pluginAction)                                            #
-    # def write(self, pluginAction)                                           #
+    # def read(pluginAction)                                                  #
+    # def write(pluginAction)                                                 #
     # def actionControlDevice(self, action, dev)                              #
     # def actionControlUniversal(self, action, dev)                           #
     #                                                                         #
@@ -497,24 +558,23 @@ class Plugin(indigo.PluginBase):
     @staticmethod
     def read(pluginAction):
         dev = indigo.devices[pluginAction.deviceId]
-        ioDev = pigpioDevices.get(dev)
+        LOG.threaddebug(u'read called "%s"', dev.name)
+        ioDev = pigpioDevices.ioDevices.get(dev.id)
         if ioDev:
             ioDev.read()
 
     @staticmethod
     def write(pluginAction):
         dev = indigo.devices[pluginAction.deviceId]
+        LOG.threaddebug(u'write called "%s"', dev.name)
         if dev.deviceTypeId in (u'analogOutput', u'digitalOutput'):
             value = pluginAction.props[u'value']
-            ioDev = pigpioDevices.get(dev)
+            ioDev = pigpioDevices.ioDevices.get(dev.id)
             if ioDev:
                 ioDev.write(value)
-        else:
-            LOG.warning(u'"%s" no write method for this device; write ignored',
-                        dev.name)
 
     def actionControlDevice(self, action, dev):
-        LOG.threaddebug(u'Plugin.actionControlDevice called "%s"', dev.name)
+        LOG.threaddebug(u'actionControlDevice called "%s"', dev.name)
         if dev.deviceTypeId == u'digitalOutput':
             if action.deviceAction == indigo.kDeviceAction.TurnOn:
                 bit = ON
@@ -524,13 +584,13 @@ class Plugin(indigo.PluginBase):
                 bit = OFF if dev.onState else ON
             else:
                 return
-            ioDev = pigpioDevices.get(dev)
+            ioDev = pigpioDevices.ioDevices.get(dev.id)
             if ioDev:
                 ioDev.write(bit)
 
     def actionControlUniversal(self, action, dev):
-        LOG.threaddebug(u'Plugin.actionControlUniversal called "%s"', dev.name)
+        LOG.threaddebug(u'actionControlUniversal called "%s"', dev.name)
         if action.deviceAction == indigo.kUniversalAction.RequestStatus:
-            ioDev = pigpioDevices.get(dev)
+            ioDev = pigpioDevices.ioDevices.get(dev.id)
             if ioDev:
                 ioDev.read()

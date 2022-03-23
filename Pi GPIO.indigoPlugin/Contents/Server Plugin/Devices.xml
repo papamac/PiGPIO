@@ -1,13 +1,17 @@
 <?xml version="1.0"?>
 <!--
- PACKAGE:  indigo plugin interface to Raspberry Pi GPIO (Pi-GPIO)
+ PACKAGE:  Raspberry Pi General Purpose Input/Output for Indigo (Pi GPIO)
   MODULE:  Devices.xml
-   TITLE:  Define and initialize Pi GPIO device objects (Devices.xml)
-FUNCTION:  Devices.xml defines the structure of the Pi GPIO device
-           objects, specifies the ConfigUis, and sets default values.
-   USAGE:  Devices.xml is read by the indigo server during plugin startup.
+   TITLE:  Pi GPIO device definitions and ConfigUis (Devices.xml)
+FUNCTION:  Devices.xml defines Pi GPIO device objects, specifies ConfigUis, and
+           sets default values for device properties.
+   USAGE:  Devices.xml is read and interpreted by the indigo server during
+           plugin startup.  When a user creates a new device, indigo uses the
+           xml data to instantiate device objects per the indigo object model
+           (IOM).  The device object includes a pluginProps dictionary that
+           contains the device properties from the xml.
   AUTHOR:  papamac
- VERSION:  0.1.0
+ VERSION:  0.5.0
     DATE:  August 12, 2021
 -->
 

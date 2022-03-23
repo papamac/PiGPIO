@@ -6,14 +6,17 @@
 #                                                                             #
 ###############################################################################
 
- PACKAGE:  indigo plugin bridge to Nu Tech AlarmDecoder alarm panel interface
-           devices (AlarmDecoder-Bridge)
+ PACKAGE:  Raspberry Pi General Purpose Input/Output for Indigo (Pi GPIO)
   MODULE:  Events.xml
-   TITLE:  Define and initialize AlarmDecoder trigger objects (Events.xml)
-FUNCTION:  Events.xml defines the structure of AlarmDecoder trigger objects,
-           specifies GUI labels, and sets default values.
-   USAGE:  Events.xml is read by the indigo server during plugin startup.
- AUTHORS:  Originally developed and copyrighted by Richard Perlman.
+   TITLE:  Pi GPIO event (trigger) objects (Events.xml)
+FUNCTION:  Events.xml defines Pi GPIO events that may trigger specific indigo
+           actions.  It identifies events, specifies GUI labels, and sets
+           default values.
+   USAGE:  Events.xml is read and interpreted by the indigo server during
+           plugin startup.  When a user creates a new trigger, indigo uses the
+           xml data to instantiate a trigger object per the indigo object model
+           (IOM).
+  AUTHOR:  papamac
  VERSION:  1.3.1
     DATE:  February 22, 2021
 
