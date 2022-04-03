@@ -16,8 +16,8 @@ FUNCTION:  pigpioDevices.py provides classes to define and manage five
    USAGE:  pigpioDevices.py is included by the primary plugin class,
            Plugin.py.  Its methods are called as needed by Plugin.py methods.
   AUTHOR:  papamac
- VERSION:  0.5.3
-    DATE:  March 28, 2022
+ VERSION:  0.5.4
+    DATE:  April 3, 2022
 
 
 UNLICENSE:
@@ -95,6 +95,7 @@ v0.5.3   3/28/2022  Generalize trigger execution, including an option to limit
                     triggers for frequently recurring events.  Add events for
                     pigpio errors with limited triggers for Start Errors and
                     Stop Errors.
+v0.5.4   4/ 3/2022  Fix a bug in executeEventTrigger.
 
 """
 
@@ -106,8 +107,8 @@ v0.5.3   3/28/2022  Generalize trigger execution, including an option to limit
 ###############################################################################
 
 __author__ = u'papamac'
-__version__ = u'0.5.3'
-__date__ = u'3/28/2022'
+__version__ = u'0.5.4'
+__date__ = u'4/3/2022'
 
 from datetime import datetime
 from logging import getLogger
@@ -179,7 +180,7 @@ def executeEventTrigger(eventType, event, limitTriggers=False):
     if limitTriggers:
         priorTriggerTime = _triggerTime.get(event)
         if priorTriggerTime:
-            if (eventTime - priorTriggerTime).totalSeconds < 600:
+            if (eventTime - priorTriggerTime).totalSeconds() < 600:
                 return  # Do not execute the trigger for this event.
 
     # Proceed with trigger execution.
