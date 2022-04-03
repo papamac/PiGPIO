@@ -11,8 +11,8 @@ FUNCTION:  Devices.xml defines Pi GPIO device objects, specifies ConfigUis, and
            (IOM).  The device object includes a pluginProps dictionary that
            contains the device properties from the xml.
   AUTHOR:  papamac
- VERSION:  0.5.0
-    DATE:  November 28, 2021
+ VERSION:  0.5.4
+    DATE:  April 3, 2022
 
 CHANGE LOG:
 
@@ -21,6 +21,7 @@ top level PiGPIO folder.  Changes of lesser importance may be described in
 individual module docstrings if appropriate.
 
 v0.5.0  11/28/2021  Fully functional beta version with minimal documentation.
+v0.5.4   4/ 3/2022  Update the digitalInput relayInterrupts label field.
 -->
 
 <Devices>
