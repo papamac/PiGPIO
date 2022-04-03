@@ -12,7 +12,15 @@ FUNCTION:  Devices.xml defines Pi GPIO device objects, specifies ConfigUis, and
            contains the device properties from the xml.
   AUTHOR:  papamac
  VERSION:  0.5.0
-    DATE:  August 12, 2021
+    DATE:  November 28, 2021
+
+CHANGE LOG:
+
+Major changes to the Pi GPIO plugin are described in the CHANGES.md file in the
+top level PiGPIO folder.  Changes of lesser importance may be described in
+individual module docstrings if appropriate.
+
+v0.5.0  11/28/2021  Fully functional beta version with minimal documentation.
 -->
 
 <Devices>

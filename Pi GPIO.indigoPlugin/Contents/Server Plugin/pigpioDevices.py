@@ -5,19 +5,19 @@
 #                                                                             #
 ###############################################################################
 """
- PACKAGE:  Raspberry Pi General Purpose Input/Output for indigo (PiGPIO)
+ PACKAGE:  Raspberry Pi General Purpose Input/Output for Indigo (PiGPIO)
   MODULE:  pigpioDevices.py
    TITLE:  Pi GPIO device management
 FUNCTION:  pigpioDevices.py provides classes to define and manage five
            different categories of Pi GPIO devices.  Each class initializes,
-           configures, starts, and stops io device objects for each indigo
+           configures, starts, and stops io device objects for each Indigo
            device.  Class methods also execute device actions and update
            device states.
    USAGE:  pigpioDevices.py is included by the primary plugin class,
            Plugin.py.  Its methods are called as needed by Plugin.py methods.
   AUTHOR:  papamac
- VERSION:  0.5.2
-    DATE:  January 19, 2022
+ VERSION:  0.5.3
+    DATE:  March 28, 2022
 
 
 UNLICENSE:
@@ -88,10 +88,13 @@ Major changes to the Pi GPIO plugin are described in the CHANGES.md file in the
 top level PiGPIO folder.  Changes of lesser importance may be described in
 individual module docstrings if appropriate.
 
-0.5.0  11/28/2021  Fully functional beta version with incomplete documentation.
-0.5.2   1/19/2022  Use common IODEV_DATA dictionary to unambiguously identify
-                   a device's interface type (I2C, SPI, or None)
-
+v0.5.0  11/28/2021  Fully functional beta version with minimal documentation.
+v0.5.2   1/19/2022  Use common IODEV_DATA dictionary to unambiguously identify
+                    a device's interface type (I2C, SPI, or None)
+v0.5.3   3/28/2022  Generalize trigger execution, including an option to limit
+                    triggers for frequently recurring events.  Add events for
+                    pigpio errors with limited triggers for Start Errors and
+                    Stop Errors.
 
 """
 
@@ -103,18 +106,29 @@ individual module docstrings if appropriate.
 ###############################################################################
 
 __author__ = u'papamac'
-__version__ = u'1.1.2'
-__date__ = u'September 9, 2021'
+__version__ = u'0.5.3'
+__date__ = u'3/28/2022'
 
+from datetime import datetime
 from logging import getLogger
 from time import sleep
 import indigo
 import pigpio
 
 
+# Module exceptions:
+
+class InitException(Exception):
+    pass
+
+
+class ConnectionError(Exception):
+    pass
+
+
 # Module constants and public data attributes:
 
-LOG = getLogger(u'Plugin')  # Use the same logger as the indigo Plugin class.
+LOG = getLogger(u'Plugin')  # Use the same logger as the Indigo Plugin class.
 ON = 1                      # Constant for the on state.
 OFF = 0                     # Constant for the off state.
 ON_OFF = (u'off', u'on')    # Text values for the onOffState.
@@ -137,6 +151,10 @@ IODEV_DATA = {'MCP23008': ('IOExpander', I2C), 'MCP23017': ('IOExpander', I2C),
 
 ioDevices = {}  # Dictionary of io device instances.
 
+# Local module dictionary of trigger times:
+
+_triggerTime = {}  # cls._triggerTime[event] = last trigger time for event.
+
 
 # Module functions:
 
@@ -153,6 +171,47 @@ def hexStr(byteList):
     return hexString[:-1]
 
 
+def executeEventTrigger(eventType, event, limitTriggers=False):
+    eventTime = datetime.now()
+
+    # Conditionally limit trigger execution.
+
+    if limitTriggers:
+        priorTriggerTime = _triggerTime.get(event)
+        if priorTriggerTime:
+            if (eventTime - priorTriggerTime).totalSeconds < 600:
+                return  # Do not execute the trigger for this event.
+
+    # Proceed with trigger execution.
+
+    for trig in indigo.triggers.iter(u'self'):
+        if trig.enabled and trig.pluginTypeId == eventType:
+            triggerEvent = trig.pluginProps[u'triggerEvent']
+            if triggerEvent == u'any' or triggerEvent == event:
+                indigo.trigger.execute(trig)
+                _triggerTime[event] = eventTime
+
+
+def pigpioFatalError(dev, error, errorMessage, limitTriggers=False):
+    """
+    Perform the following standard functions for a fatal device error:
+
+    1.  Log the error on the indigo log.
+    2.  Indicate the error on the indigo home display by changing the device
+        state and setting the text to red.
+    3.  Executing an event trigger to invoke other actions, if any, by the
+        indigo server.
+    4.  Stopping the io device to disable any future use until it has been
+        manually restarted or the plugin has been reloaded.
+    """
+    LOG.error(u'"%s" %s error: %s', dev.name, error, errorMessage)
+    dev.setErrorStateOnServer(u'%s err' % error)
+    executeEventTrigger(u'pigpioError', u'%sError' % error, limitTriggers)
+    ioDev = ioDevices.get(dev.id)
+    if ioDev:
+        ioDev.stop()
+
+
 def start(dev):
     if ioDevices.get(dev.id):  # Return if already started.
         return
@@ -162,11 +221,11 @@ def start(dev):
 
     try:
         ioDev = globals()[ioDevClass](dev)
-    except Exception as error:
-        LOG.error(u'"%s" start error: %s', dev.name, error)
-        dev.setErrorStateOnServer(u'start err')
-        ioDev = ioDevices.get(dev.id)
-        ioDev.stop()
+    except ConnectionError as errorMessage:
+        pigpioFatalError(dev, u'conn', errorMessage, limitTriggers=True)
+        return
+    except Exception as errorMessage:
+        pigpioFatalError(dev, u'start', errorMessage)
         return
 
     LOG.info(u'"%s" started as a %s on %s',
@@ -188,17 +247,12 @@ class PiGPIODevice:
     PiGPIODevice is an abstract base class used in defining all Pi GPIO device
     classes.  The __init__ method initializes pigpio host access and polling
     status variables.  Additional private methods initialize i2c and spi bus
-    access and update the indigo device states for digital and analog devices.
+    access and update the Indigo device states for digital and analog devices.
     It has one public method (stop) that terminates the instance's pigpio
     connection.  PiGPIODevice subclasses must include specific device
     initialization in their __init__ methods and public read/write/stop methods
     as appropriate.
     """
-
-    # PiGPIODeviceException:
-
-    class PiGPIODeviceException(Exception):
-        pass
 
     # Class constants:
 
@@ -209,14 +263,14 @@ class PiGPIODevice:
 
     # Public class attributes that can be changed by
     # pigpioDevices.PiGPIODevice.attribute = value.
-    # These values are overridden by the indigo plugin class from the
+    # These values are overridden by the Indigo plugin class from the
     # plugin.prefs dictionary.
 
     monitorStatus = True
-    statusInterval = 10
+    statusInterval = 10  # If monitorStatus, compute/report every 10 minutes.
     checkSPI = False  # Perform SPI integrity check on each SPI read.
 
-    # Class dictionary for pigpio resource management:
+    # Class dictionaries:
 
     _resources = {}  # self._resources[resourceId] = (resource, useCount).
 
@@ -228,7 +282,7 @@ class PiGPIODevice:
 
         ioDevices[dev.id] = self
 
-        # Set common internal instance attributes for all sub-classes:
+        # Set common internal instance attributes for all subclasses:
 
         self._dev = dev
         self._callbackId = None
@@ -312,15 +366,21 @@ class PiGPIODevice:
                 resource = pigpio.pi(rIdSplit[0], rIdSplit[1])
                 if not resource.connected:  # Connection failed.
                     resource.stop()
-                    error = u'pigpio connection failed'
-                    raise self.PiGPIODeviceException(error)
+                    errorMessage = u'pigpio connection failed'
+                    raise ConnectionError(errorMessage)
+                LOG.debug(u'"%s" connection resource allocated %s',
+                          self._dev.name, resource)
             elif rIdLen == 3:  # i2c resource; rIdSplit[2] = i2cAddress (hex)
                 resource = self._pi.i2c_open(self.I2CBUS, int(rIdSplit[2],
                                                               base=16))
+                LOG.debug(u'"%s" i2c handle allocated %s',
+                          self._dev.name, resource)
             else:  # rIdLen == 4 - spi resource;
                 # rIdSplit[2] = spiChannel, rIdSplit[3] = bitRate (in kb/sec)
                 resource = self._pi.spi_open(int(rIdSplit[2]),
                            500 * int(rIdSplit[3]), self.SPIBUS << 8)
+                LOG.debug(u'"%s" spi handle allocated %s',
+                          self._dev.name, resource)
             self._resources[resourceId] = resource, 1
         return resource
 
@@ -335,10 +395,16 @@ class PiGPIODevice:
                 resIdSplit = resourceId.split(u':')
                 splitLen = len(resIdSplit)  # 2 ==> conn, 3 ==> i2c, 4 ==> spi.
                 if splitLen == 2:  # pigpio connection resource.
+                    LOG.debug(u'"%s" stopping pigpio connection %s',
+                              self._dev.name, resource)
                     resource.stop()
                 elif splitLen == 3:  # i2c handle resource.
+                    LOG.debug(u'"%s" closing i2c handle %s',
+                              self._dev.name, resource)
                     self._pi.i2c_close(resource)
                 elif splitLen == 4:  # spi handle resource.
+                    LOG.debug(u'"%s" closing spi handle %s',
+                              self._dev.name, resource)
                     self._pi.spi_close(resource)
 
     def _getUiValue(self, value):
@@ -396,20 +462,21 @@ class PiGPIODevice:
         # Perform low and high limit checks and update the limit fault states
         # on the server.
 
-        lowFault = False
+        event = None
         if self._lowLimitCheck:
             lowFault = sensorValue < self._lowLimit
             self._dev.updateStateOnServer(u'lowFault', lowFault)
             if lowFault:
+                event = u'lowFault'
                 LOG.warning(u'"%s" low limit fault %.4f %s <  %.4f %s',
                             self._dev.name, sensorValue, self._units,
                             self._lowLimit, self._units)
 
-        highFault = False
         if self._highLimitCheck:
             highFault = sensorValue > self._highLimit
             self._dev.updateStateOnServer(u'highFault', highFault)
-            if highFault:
+            if highFault:  # It's OK, lowFault and highFault are exclusive.
+                event = u'highFault'
                 LOG.warning(u'"%s" high limit fault %.4f %s > %.4f %s',
                             self._dev.name, sensorValue, self._units,
                             self._highLimit, self._units)
@@ -418,18 +485,10 @@ class PiGPIODevice:
         # execute any triggers.
 
         if self._lowLimitCheck or self._highLimitCheck:
-            if lowFault or highFault:
+            if event:
+                executeEventTrigger(u'limitFault', event)
                 self._dev.updateStateImageOnServer(
                           indigo.kStateImageSel.SensorTripped)
-
-                for trig in indigo.triggers.iter(u'self'):
-                    if trig.pluginTypeId == u'limitFault' and trig.enabled:
-                        trigName = trig.pluginProps[u'indigoTrigger']
-                        if (trigName == u'anyFault'
-                                or (trigName == u'lowFault' and lowFault)
-                                or (trigName == u'highFault' and highFault)):
-                            indigo.trigger.execute(trig.id)
-
             else:
                 self._dev.updateStateImageOnServer(
                           indigo.kStateImageSel.SensorOn)
@@ -460,18 +519,14 @@ class PiGPIODevice:
     def read(self, logAll=True):
         try:
             self._read(logAll=logAll)
-        except Exception as error:
-            LOG.error(u'"%s" read error: %s', self._dev.name, error)
-            self.stop()
-            self._dev.setErrorStateOnServer(u'read err')
+        except Exception as errorMessage:
+            pigpioFatalError(self._dev, u'read', errorMessage)
 
     def write(self, value):
         try:
             self._write(value)
-        except Exception as error:
-            LOG.error(u'"%s" write error: %s', self._dev.name, error)
-            self.stop()
-            self._dev.setErrorStateOnServer(u'write err')
+        except Exception as errorMessage:
+            pigpioFatalError(self._dev, u'write', errorMessage)
 
     def poll(self):
         if self._poll:
@@ -503,6 +558,8 @@ class PiGPIODevice:
             del ioDevices[self._dev.id]
             LOG.debug(u'"%s" stopped', self._dev.name)
 
+        # Release pigpiod resources.
+
         try:
             # Cancel the device callback if needed.
 
@@ -515,10 +572,9 @@ class PiGPIODevice:
                 self._releaseResource(self._interfaceId)
             self._releaseResource(self._connectionId)
 
-        except Exception as error:
-            LOG.error(u'"%s" stop error: %s', self._dev.name, error)
-            self._dev.setErrorStateOnServer(None)
-            self._dev.setErrorStateOnServer(u'stop err')
+        except Exception as errorMessage:
+            pigpioFatalError(self._dev, u'stop', errorMessage,
+                             limitTriggers=True)
 
 
 ###############################################################################
@@ -668,11 +724,11 @@ class DAC12(PiGPIODevice):
                  self._units)
 
     def _write(self, value):
-        try:  # Check the write argument.
+        try:  # Check the argument.
             sensorValue = float(value)
         except ValueError:
-            LOG.warning(u'"%s" write argument %s is not a number; '
-                        u'write ignored', self._dev.name, value)
+            LOG.warning(u'"%s" invalid output value %s; write ignored;',
+                        self._dev.name, value)
             return
 
         # Convert the sensorValue to dac raw counts and write to the dac.
@@ -941,12 +997,12 @@ class IOExpander(PiGPIODevice):
             hwInt = int(dev.pluginProps[u'hardwareInterrupt'])
             if hwInt:
 
-                # Setup the hardware interrupt relay as follows:
+                # Set up the hardware interrupt relay as follows:
                 # Get the interrupt relay io device object and append the
                 # device id of this device to the object's interrupt
                 # devices list.  If the interrupt relay io device is
                 # missing, try starting it.  If it fails to start raise a
-                # start exception for the this device.
+                # start exception for the device.
 
                 relayGPIO = dev.pluginProps[u'interruptRelayGPIO']
                 relayDev = indigo.devices[relayGPIO]
@@ -957,9 +1013,9 @@ class IOExpander(PiGPIODevice):
                     start(relayDev)
                     rioDev = ioDevices.get(relayDev.id)
                     if not rioDev:
-                        error = (u'interrupt relay GPIO "%s" not started'
-                                 % relayGPIO)
-                        raise self.PiGPIODeviceException(error)
+                        errorMessage = (u'interrupt relay GPIO "%s" not'
+                                        u' started' % relayGPIO)
+                        raise InitException(errorMessage)
 
                 if self._dev.id not in rioDev.interruptDevices:
                     rioDev.interruptDevices.append(self._dev.id)
@@ -1073,19 +1129,11 @@ class IOExpander(PiGPIODevice):
                                 self._dev.name, lostInterrupts)
                 return True  # Signal an interrupt match.
 
-        except Exception as error:
-            self.stop()
-            LOG.error(u'"%s" interrupt error: %s',
-                      self._dev.name, error)
-            self._dev.setErrorStateOnServer(None)
-            self._dev.setErrorStateOnServer(u'int err')
+        except Exception as errorMessage:
+            pigpioFatalError(self._dev, u'int', errorMessage)
 
     def resetInterrupt(self):
         try:
             self._readRegister(u'GPIO')  # Read port register to clear int.
-        except Exception as error:
-            self.stop()
-            LOG.error(u'"%s" reset interrupt error: %s',
-                      self._dev.name, error)
-            self._dev.setErrorStateOnServer(None)
-            self._dev.setErrorStateOnServer(u'int err')
+        except Exception as errorMessage:
+            pigpioFatalError(self._dev, u'int', errorMessage)
