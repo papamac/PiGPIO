@@ -808,7 +808,7 @@ v0.5.0  11/28/2021  Fully functional beta version with minimal documentation.
             </Field>
 
             <Field id="relayInterruptsLabel" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true" visibleBindingId="callback" visibleBindingValue="true">
-                <Label>Indicates that this GPIO input is connected to hardware interrupt outputs from one or more interrupt devices.  An transition on this GPIO causes the callback method to relay the interrupt to all interrupt devices.</Label>
+                <Label>Indicates that this GPIO input is connected to hardware interrupt outputs from one or more interrupt devices.  A transition on this GPIO causes the callback method to relay the interrupt to all interrupt devices.</Label>
             </Field>
 
 
