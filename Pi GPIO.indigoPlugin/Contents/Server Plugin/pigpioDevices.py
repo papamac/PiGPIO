@@ -180,7 +180,7 @@ def executeEventTrigger(eventType, event, limitTriggers=False):
     if limitTriggers:
         priorTriggerTime = _triggerTime.get(event)
         if priorTriggerTime:
-            if (eventTime - priorTriggerTime).totalSeconds() < 600:
+            if (eventTime - priorTriggerTime).total_seconds() < 600:
                 return  # Do not execute the trigger for this event.
 
     # Proceed with trigger execution.
