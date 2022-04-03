@@ -9,15 +9,15 @@
   MODULE:  plugin.py
    TITLE:  primary Python module in the Pi GPIO.indigoPlugin bundle
 FUNCTION:  plugin.py defines the Plugin class, with standard methods that
-           interface to the indigo server and manage indigo device objects.
-           It instantiates a pigpioDevices object for each indigo device object
+           interface to the Indigo server and manage Indigo device objects.
+           It instantiates a pigpioDevices object for each Indigo device object
            and invokes pigpioDevices object methods to perform detailed device
            functions.
    USAGE:  plugin.py is included in the Pi GPIO.indigoPlugin bundle and its
-           methods are called by the indigo server.
+           methods are called by the Indigo server.
   AUTHOR:  papamac
- VERSION:  0.5.2
-    DATE:  January 19, 2022
+ VERSION:  0.5.3
+    DATE:  March 28, 2022
 
 
 UNLICENSE:
@@ -79,7 +79,7 @@ defines the Plugin class whose methods provide entry points into the plugin
 from the Indigo Plugin Host.  These methods, with access to the Indigo Server's
 object database, manage the definition, validation, instantiation, and state
 maintenance of Pi GPIO device objects.  For more details see the Plugin class
-docstring (below) and the following indigo documentation link:
+docstring (below) and the following Indigo documentation link:
 
 <https://wiki.indigodomo.com/doku.php?id=indigo_2021.1_documentation:plugin_guide>
 
@@ -99,10 +99,11 @@ Major changes to the Pi GPIO plugin are described in the CHANGES.md file in the
 top level PiGPIO folder.  Changes of lesser importance may be described in
 individual module docstrings if appropriate.
 
-0.5.0  11/28/2021  Fully functional beta version with incomplete documentation.
-0.5.1  11/29/2021  Force device stop/restart on a name change.
-0.5.2   1/19/2022  Use common IODEV_DATA dictionary to unambiguously identify
-                   a device's interface type (I2C, SPI, or None)
+v0.5.0  11/28/2021  Fully functional beta version with minimal documentation.
+v0.5.1  11/29/2021  Force device stop/restart on a name change.
+v0.5.2   1/19/2022  Use common IODEV_DATA dictionary to unambiguously identify
+                    a device's interface type (I2C, SPI, or None)
+v0.5.3   3/28/2022  Improve validation for low and high analog limits.
 
 """
 ###############################################################################
@@ -113,8 +114,8 @@ individual module docstrings if appropriate.
 ###############################################################################
 
 __author__ = u'papamac'
-__version__ = u'0.5.1'
-__date__ = u'11/29/2021'
+__version__ = u'0.5.3'
+__date__ = u'3/28/2022'
 
 from logging import getLogger, NOTSET
 
@@ -360,15 +361,24 @@ class Plugin(indigo.PluginBase):
                     error = u'Change Threshold must be non-negative.'
                     errors[u'changeThreshold'] = error
 
+            lowLimit = highLimit = None
             try:  # Check lowLimit.
-                float(valuesDict[u'lowLimit'])
+                lowLimit = float(valuesDict[u'lowLimit'])
             except ValueError:
                 errors[u'lowLimit'] = u'Low Limit must be a number.'
 
             try:  # Check highLimit.
-                float(valuesDict[u'highLimit'])
+                highLimit = float(valuesDict[u'highLimit'])
             except ValueError:
                 errors[u'highLimit'] = u'High Limit must be a number.'
+
+            # When both are specified, check for lowLimit < highLimit.
+            if (valuesDict[u'lowLimitCheck'] and lowLimit
+                    and valuesDict[u'highLimitCheck'] and highLimit
+                    and lowLimit > highLimit):
+                error = u'Low limit must be less than high limit.'
+                errors[u'lowLimit'] = error
+                errors[u'highLimit'] = error
 
         elif typeId == u'analogOutput':
 

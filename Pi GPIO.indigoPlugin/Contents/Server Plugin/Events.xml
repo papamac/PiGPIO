@@ -17,26 +17,53 @@ FUNCTION:  Events.xml defines Pi GPIO events that may trigger specific indigo
            xml data to instantiate a trigger object per the indigo object model
            (IOM).
   AUTHOR:  papamac
- VERSION:  1.3.1
-    DATE:  February 22, 2021
+ VERSION:  0.5.1
+    DATE:  March 28, 2022
 
 
 CHANGE LOG:
 
-v1.3.1   2/22/2021  Update comments.
+Major changes to the Pi GPIO plugin are described in the CHANGES.md file in the
+top level PiGPIO folder.  Changes of lesser importance may be described in
+individual module docstrings if appropriate.
+
+v0.5.0  11/28/2021  Fully functional beta version with minimal documentation.
+v0.5.3   3/28/2022  Change event field id's and add events for pigpio errors.
 
 -->
 
 <Events>
 
+
+    <Event id="pigpioError">
+        <Name>pigpio Error</Name>
+        <ConfigUI>
+
+            <Field id="triggerEvent" type="menu" defaultValue="any">
+                <Label>pigpio Error:</Label>
+                <List>
+                    <Option value="any">Any Pi GPIO Error</Option>
+                    <Option value="connError">Connection Error</Option>
+                    <Option value="startError">Start Error</Option>
+                    <Option value="stopError">Stop Error</Option>
+                    <Option value="readError">Read Error</Option>
+                    <Option value="writeError">Write Error</Option>
+                    <Option value="intError">Interrupt Error</Option>
+                </List>
+            </Field>
+
+        </ConfigUI>
+    </Event>
+
+
     <Event id="limitFault">
         <Name>Limit Check Fault</Name>
         <ConfigUI>
 
-            <Field id="indigoTrigger" type="menu" defaultValue="anyFault">
+            <Field id="triggerEvent" type="menu" defaultValue="anyFault">
                 <Label>Limit Check Fault:</Label>
                 <List>
-                    <Option value="anyFault">Any Limit Fault</Option>
+                    <Option value="any">Any Limit Fault</Option>
                     <Option value="lowFault">Low Limit Fault</Option>
                     <Option value="highFault">High Limit Fault</Option>
                 </List>

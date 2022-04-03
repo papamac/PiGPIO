@@ -10,8 +10,17 @@ FUNCTION:  PluginConfig.xml defines plugin preferences, specifies ConfigUis,
            that is accessed as needed by plugin methods to select processing
            options.
   AUTHOR:  papamac
- VERSION:  1.0.0
-    DATE:  May 23, 2020
+ VERSION:  0.5.0
+    DATE:  November 28, 2021
+
+CHANGE LOG:
+
+Major changes to the Pi GPIO plugin are described in the CHANGES.md file in the
+top level PiGPIO folder.  Changes of lesser importance may be described in
+individual module docstrings if appropriate.
+
+v0.5.0  11/28/2021  Fully functional beta version with minimal documentation..
+
 -->
 
 <PluginConfig>
@@ -70,6 +79,7 @@ FUNCTION:  PluginConfig.xml defines plugin preferences, specifies ConfigUis,
     <Field id="statusInterval" type="textfield" defaultValue="10.0" visibleBindingId="monitorStatus" visibleBindingValue="true">
         <Label>Status Monitoring Interval (minutes):</Label>
     </Field>
+
 
     <!-- ######################## Advanced Options ######################## -->
 
