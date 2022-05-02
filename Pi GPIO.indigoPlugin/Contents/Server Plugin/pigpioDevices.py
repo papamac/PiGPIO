@@ -16,8 +16,8 @@ FUNCTION:  pigpioDevices.py provides classes to define and manage five
    USAGE:  pigpioDevices.py is included by the primary plugin class,
            Plugin.py.  Its methods are called as needed by Plugin.py methods.
   AUTHOR:  papamac
- VERSION:  0.5.4
-    DATE:  April 3, 2022
+ VERSION:  0.5.6
+    DATE:  May 2, 2022
 
 
 UNLICENSE:
@@ -85,7 +85,7 @@ DEPENDENCIES/LIMITATIONS:
 CHANGE LOG:
 
 Major changes to the Pi GPIO plugin are described in the CHANGES.md file in the
-top level PiGPIO folder.  Changes of lesser importance may be described in
+top level bundle directory.  Changes of lesser importance may be described in
 individual module docstrings if appropriate.
 
 v0.5.0  11/28/2021  Fully functional beta version with minimal documentation.
@@ -96,6 +96,10 @@ v0.5.3   3/28/2022  Generalize trigger execution, including an option to limit
                     pigpio errors with limited triggers for Start Errors and
                     Stop Errors.
 v0.5.4   4/ 3/2022  Fix a bug in executeEventTrigger.
+v0.5.5   4/12/2022  Set option to limit triggers to be the default for all
+                    event types.
+v0.5.6   5/ 2/2022  Fix a bug that disables the gpio bounce filter operation
+                    when bounce filter warning messages are not selected.
 
 """
 
@@ -107,8 +111,8 @@ v0.5.4   4/ 3/2022  Fix a bug in executeEventTrigger.
 ###############################################################################
 
 __author__ = u'papamac'
-__version__ = u'0.5.4'
-__date__ = u'4/3/2022'
+__version__ = u'0.5.6'
+__date__ = u'5/2/2022'
 
 from datetime import datetime
 from logging import getLogger
@@ -172,7 +176,7 @@ def hexStr(byteList):
     return hexString[:-1]
 
 
-def executeEventTrigger(eventType, event, limitTriggers=False):
+def executeEventTrigger(eventType, event, limitTriggers=True):
     eventTime = datetime.now()
 
     # Conditionally limit trigger execution.
@@ -193,7 +197,7 @@ def executeEventTrigger(eventType, event, limitTriggers=False):
                 _triggerTime[event] = eventTime
 
 
-def pigpioFatalError(dev, error, errorMessage, limitTriggers=False):
+def pigpioFatalError(dev, error, errorMessage, limitTriggers=True):
     """
     Perform the following standard functions for a fatal device error:
 
@@ -207,7 +211,8 @@ def pigpioFatalError(dev, error, errorMessage, limitTriggers=False):
     """
     LOG.error(u'"%s" %s error: %s', dev.name, error, errorMessage)
     dev.setErrorStateOnServer(u'%s err' % error)
-    executeEventTrigger(u'pigpioError', u'%sError' % error, limitTriggers)
+    executeEventTrigger(u'pigpioError', u'%sError' % error,
+                        limitTriggers=limitTriggers)
     ioDev = ioDevices.get(dev.id)
     if ioDev:
         ioDev.stop()
@@ -223,7 +228,7 @@ def start(dev):
     try:
         ioDev = globals()[ioDevClass](dev)
     except ConnectionError as errorMessage:
-        pigpioFatalError(dev, u'conn', errorMessage, limitTriggers=True)
+        pigpioFatalError(dev, u'conn', errorMessage)
         return
     except Exception as errorMessage:
         pigpioFatalError(dev, u'start', errorMessage)
@@ -379,7 +384,8 @@ class PiGPIODevice:
             else:  # rIdLen == 4 - spi resource;
                 # rIdSplit[2] = spiChannel, rIdSplit[3] = bitRate (in kb/sec)
                 resource = self._pi.spi_open(int(rIdSplit[2]),
-                           500 * int(rIdSplit[3]), self.SPIBUS << 8)
+                                             500 * int(rIdSplit[3]),
+                                             self.SPIBUS << 8)
                 LOG.debug(u'"%s" spi handle allocated %s',
                           self._dev.name, resource)
             self._resources[resourceId] = resource, 1
@@ -574,8 +580,7 @@ class PiGPIODevice:
             self._releaseResource(self._connectionId)
 
         except Exception as errorMessage:
-            pigpioFatalError(self._dev, u'stop', errorMessage,
-                             limitTriggers=True)
+            pigpioFatalError(self._dev, u'stop', errorMessage)
 
 
 ###############################################################################
@@ -822,7 +827,7 @@ class PiGPIO(PiGPIODevice):
 
     def _callback(self, gpioNum, pinBit, tic):
         LOG.debug(u'"%s" callback %s %s %s µs',
-                 self._dev.name, gpioNum, pinBit, tic)
+                  self._dev.name, gpioNum, pinBit, tic)
         if pinBit in (ON, OFF):
             bit = pinBit ^ self._inv
             dt = pigpio.tickDiff(self._priorTic, tic)
@@ -835,7 +840,7 @@ class PiGPIO(PiGPIODevice):
                     if self._logBounce:
                         LOG.warning(u'"%s" %s µs bounce; update to %s ignored',
                                     self._dev.name, dt, ON_OFF[bit])
-                        return  # Ignore the bounced state change.
+                    return  # Ignore the bounced state change.
 
             logAll = True  # Default logging option for state update.
 
