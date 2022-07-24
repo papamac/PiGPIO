@@ -5,7 +5,7 @@
 #                                                                             #
 ###############################################################################
 """
- PACKAGE:  Raspberry Pi General Purpose Input/Output for Indigo (PiGPIO)
+ PACKAGE:  Raspberry Pi General Purpose Input/Output for Indigo
   MODULE:  pigpioDevices.py
    TITLE:  Pi GPIO device management
 FUNCTION:  pigpioDevices.py provides classes to define and manage five
@@ -16,8 +16,8 @@ FUNCTION:  pigpioDevices.py provides classes to define and manage five
    USAGE:  pigpioDevices.py is included by the primary plugin class,
            Plugin.py.  Its methods are called as needed by Plugin.py methods.
   AUTHOR:  papamac
- VERSION:  0.5.6
-    DATE:  May 2, 2022
+ VERSION:  0.5.7
+    DATE:  July 20, 2022
 
 
 UNLICENSE:
@@ -98,11 +98,10 @@ v0.5.3   3/28/2022  Generalize trigger execution, including an option to limit
 v0.5.4   4/ 3/2022  Fix a bug in executeEventTrigger.
 v0.5.5   4/12/2022  Set option to limit triggers to be the default for all
                     event types.
-v0.5.6   5/ 2/2022  Fix a bug that disables the gpio bounce filter operation
+v0.5.6   5/ 2/2022  Fix a bug that erroneously disables the gpio bounce filter
                     when bounce filter warning messages are not selected.
-
+v0.5.7   7/20/2022  Update for Python 3.
 """
-
 ###############################################################################
 #                                                                             #
 #                          MODULE pigpioDevices.py                            #
@@ -110,9 +109,9 @@ v0.5.6   5/ 2/2022  Fix a bug that disables the gpio bounce filter operation
 #                                                                             #
 ###############################################################################
 
-__author__ = u'papamac'
-__version__ = u'0.5.6'
-__date__ = u'5/2/2022'
+__author__ = 'papamac'
+__version__ = '0.5.7'
+__date__ = '7/20/2022'
 
 from datetime import datetime
 from logging import getLogger
@@ -133,10 +132,10 @@ class ConnectionError(Exception):
 
 # Module constants and public data attributes:
 
-LOG = getLogger(u'Plugin')  # Use the same logger as the Indigo Plugin class.
+LOG = getLogger('Plugin')   # Use the same logger as the Indigo Plugin class.
 ON = 1                      # Constant for the on state.
 OFF = 0                     # Constant for the off state.
-ON_OFF = (u'off', u'on')    # Text values for the onOffState.
+ON_OFF = ('off', 'on')      # Text values for the onOffState.
 I2C = 0                     # Constant for an I2C interface.
 SPI = 1                     # Constant for an SPI interface.
 
@@ -172,7 +171,7 @@ def hexStr(byteList):
     """
     hexString = u''
     for byte in byteList:
-        hexString += u'%02x ' % byte
+        hexString += '%02x ' % byte
     return hexString[:-1]
 
 
@@ -189,10 +188,10 @@ def executeEventTrigger(eventType, event, limitTriggers=True):
 
     # Proceed with trigger execution.
 
-    for trig in indigo.triggers.iter(u'self'):
+    for trig in indigo.triggers.iter('self'):
         if trig.enabled and trig.pluginTypeId == eventType:
-            triggerEvent = trig.pluginProps[u'triggerEvent']
-            if triggerEvent == u'any' or triggerEvent == event:
+            triggerEvent = trig.pluginProps['triggerEvent']
+            if triggerEvent == 'any' or triggerEvent == event:
                 indigo.trigger.execute(trig)
                 _triggerTime[event] = eventTime
 
@@ -209,9 +208,9 @@ def pigpioFatalError(dev, error, errorMessage, limitTriggers=True):
     4.  Stopping the io device to disable any future use until it has been
         manually restarted or the plugin has been reloaded.
     """
-    LOG.error(u'"%s" %s error: %s', dev.name, error, errorMessage)
-    dev.setErrorStateOnServer(u'%s err' % error)
-    executeEventTrigger(u'pigpioError', u'%sError' % error,
+    LOG.error('"%s" %s error: %s', dev.name, error, errorMessage)
+    dev.setErrorStateOnServer('%s err' % error)
+    executeEventTrigger('pigpioError', '%sError' % error,
                         limitTriggers=limitTriggers)
     ioDev = ioDevices.get(dev.id)
     if ioDev:
@@ -222,19 +221,19 @@ def start(dev):
     if ioDevices.get(dev.id):  # Return if already started.
         return
 
-    ioDevType = dev.pluginProps[u'ioDevType']
+    ioDevType = dev.pluginProps['ioDevType']
     ioDevClass = IODEV_DATA[ioDevType][0]
 
     try:
         ioDev = globals()[ioDevClass](dev)
     except ConnectionError as errorMessage:
-        pigpioFatalError(dev, u'conn', errorMessage)
+        pigpioFatalError(dev, 'conn', errorMessage)
         return
     except Exception as errorMessage:
-        pigpioFatalError(dev, u'start', errorMessage)
+        pigpioFatalError(dev, 'start', errorMessage)
         return
 
-    LOG.info(u'"%s" started as a %s on %s',
+    LOG.info('"%s" started as a %s on %s',
              dev.name, dev.deviceTypeId, dev.address)
     dev.setErrorStateOnServer(None)
     ioDev.read()
@@ -293,52 +292,51 @@ class PiGPIODevice:
         self._dev = dev
         self._callbackId = None
         self._interfaceId = None
-        self._poll = dev.pluginProps[u'polling']
+        self._poll = dev.pluginProps['polling']
         self._pollCount = 0
         self._lastPoll = self._lastStatus = indigo.server.getTime()
 
         # Connect to the pigpio daemon.
 
-        hostAddress = dev.pluginProps[u'hostAddress']
-        portNumber = dev.pluginProps[u'portNumber']
-        self._connectionId = u'%s:%s' % (hostAddress, portNumber)
+        hostAddress = dev.pluginProps['hostAddress']
+        portNumber = dev.pluginProps['portNumber']
+        self._connectionId = '%s:%s' % (hostAddress, portNumber)
         self._pi = self._getResource(self._connectionId)
 
         # Open a handle to access an i2c or spi device:
 
-        ioDevType = dev.pluginProps[u'ioDevType']
+        ioDevType = dev.pluginProps['ioDevType']
         self._interface = IODEV_DATA[ioDevType][1]
         if self._interface is not None:
             if self._interface is I2C:
-                i2cAddress = dev.pluginProps[u'i2cAddress']
-                self._interfaceId = u'%s:%s' % (self._connectionId,
-                                                i2cAddress)
+                i2cAddress = dev.pluginProps['i2cAddress']
+                self._interfaceId = '%s:%s' % (self._connectionId, i2cAddress)
             else:  # interface is SPI.
-                spiChannel = dev.pluginProps[u'spiChannel']
-                bitRate = dev.pluginProps[u'bitRate']
-                self._interfaceId = u'%s:%s:%s' % (self._connectionId,
-                                                   spiChannel, bitRate)
+                spiChannel = dev.pluginProps['spiChannel']
+                bitRate = dev.pluginProps['bitRate']
+                self._interfaceId = '%s:%s:%s' % (self._connectionId,
+                                                  spiChannel, bitRate)
             self._handle = self._getResource(self._interfaceId)
 
         # Set common internal instance attributes by device type id:
 
-        if dev.deviceTypeId == u'analogInput':
-            self._sensorValue = dev.states.get(u'sensorValue', 0.0)
-            self._scale = float(dev.pluginProps[u'scaling'])
-            self._units = dev.pluginProps[u'units']
-            self._adcChan = int(dev.pluginProps[u'adcChannel'])
-            self._threshold = float(dev.pluginProps[u'changeThreshold'])
-            self._lowLimitCheck = dev.pluginProps[u'lowLimitCheck']
-            self._lowLimit = float(dev.pluginProps[u'lowLimit'])
-            self._highLimitCheck = dev.pluginProps[u'highLimitCheck']
-            self._highLimit = float(dev.pluginProps[u'highLimit'])
+        if dev.deviceTypeId == 'analogInput':
+            self._sensorValue = dev.states.get('sensorValue', 0.0)
+            self._scale = float(dev.pluginProps['scaling'])
+            self._units = dev.pluginProps['units']
+            self._adcChan = int(dev.pluginProps['adcChannel'])
+            self._threshold = float(dev.pluginProps['changeThreshold'])
+            self._lowLimitCheck = dev.pluginProps['lowLimitCheck']
+            self._lowLimit = float(dev.pluginProps['lowLimit'])
+            self._highLimitCheck = dev.pluginProps['highLimitCheck']
+            self._highLimit = float(dev.pluginProps['highLimit'])
 
-        elif dev.deviceTypeId == u'digitalInput':
-            self._bitValue = dev.states[u'onOffState']
-            self._inv = int(dev.pluginProps[u'invert'])
+        elif dev.deviceTypeId == 'digitalInput':
+            self._bitValue = dev.states['onOffState']
+            self._inv = int(dev.pluginProps['invert'])
 
-        else:  # dev.deviceTypeId == u'digitalOutput'
-            self._bitValue = dev.states[u'onOffState']
+        else:  # dev.deviceTypeId == 'digitalOutput'
+            self._bitValue = dev.states['onOffState']
             self._inv = 0  # Allow digital outputs to use read methods.
             dev.updateStateImageOnServer(self.IMAGE_SEL[dev.onState])
 
@@ -352,9 +350,9 @@ class PiGPIODevice:
 
         There are three types of resources with the following resourceIds:
 
-        pigpio connection resource - u'hostAddress:portNumber'
-        i2c handle resource - u'hostAddress:portNumber:i2cAddress'
-        spi handle resource - u'hostAddress:portNumber:spiChannel:bitRate'
+        pigpio connection resource - 'hostAddress:portNumber'
+        i2c handle resource - 'hostAddress:portNumber:i2cAddress'
+        spi handle resource - 'hostAddress:portNumber:spiChannel:bitRate'
 
         Because i2c and spi handles are unique only for a specific pigpio
         connection, the connection resource id is included in the i2c and spi
@@ -365,28 +363,28 @@ class PiGPIODevice:
             useCount += 1
             self._resources[resourceId] = (resource, useCount)
         else:
-            rIdSplit = resourceId.split(u':')
+            rIdSplit = resourceId.split(':')
             rIdLen = len(rIdSplit)  # 2 ==> connection, 3 ==> i2c, 4 ==> spi.
             if rIdLen == 2:  # pigpio connection resource;
                 # rIdSplit[0] = hostAddress, rIdSplit[1] = portNumber.
                 resource = pigpio.pi(rIdSplit[0], rIdSplit[1])
                 if not resource.connected:  # Connection failed.
                     resource.stop()
-                    errorMessage = u'pigpio connection failed'
+                    errorMessage = 'pigpio connection failed'
                     raise ConnectionError(errorMessage)
-                LOG.debug(u'"%s" connection resource allocated %s',
+                LOG.debug('"%s" connection resource allocated %s',
                           self._dev.name, resource)
             elif rIdLen == 3:  # i2c resource; rIdSplit[2] = i2cAddress (hex)
                 resource = self._pi.i2c_open(self.I2CBUS, int(rIdSplit[2],
                                                               base=16))
-                LOG.debug(u'"%s" i2c handle allocated %s',
+                LOG.debug('"%s" i2c handle allocated %s',
                           self._dev.name, resource)
             else:  # rIdLen == 4 - spi resource;
                 # rIdSplit[2] = spiChannel, rIdSplit[3] = bitRate (in kb/sec)
                 resource = self._pi.spi_open(int(rIdSplit[2]),
                                              500 * int(rIdSplit[3]),
                                              self.SPIBUS << 8)
-                LOG.debug(u'"%s" spi handle allocated %s',
+                LOG.debug('"%s" spi handle allocated %s',
                           self._dev.name, resource)
             self._resources[resourceId] = resource, 1
         return resource
@@ -399,18 +397,18 @@ class PiGPIODevice:
                 self._resources[resourceId] = (resource, useCount)
             else:
                 del self._resources[resourceId]
-                resIdSplit = resourceId.split(u':')
+                resIdSplit = resourceId.split(':')
                 splitLen = len(resIdSplit)  # 2 ==> conn, 3 ==> i2c, 4 ==> spi.
                 if splitLen == 2:  # pigpio connection resource.
-                    LOG.debug(u'"%s" stopping pigpio connection %s',
+                    LOG.debug('"%s" stopping pigpio connection %s',
                               self._dev.name, resource)
                     resource.stop()
                 elif splitLen == 3:  # i2c handle resource.
-                    LOG.debug(u'"%s" closing i2c handle %s',
+                    LOG.debug('"%s" closing i2c handle %s',
                               self._dev.name, resource)
                     self._pi.i2c_close(resource)
                 elif splitLen == 4:  # spi handle resource.
-                    LOG.debug(u'"%s" closing spi handle %s',
+                    LOG.debug('"%s" closing spi handle %s',
                               self._dev.name, resource)
                     self._pi.spi_close(resource)
 
@@ -423,10 +421,10 @@ class PiGPIODevice:
         magnitude = abs(value)
         for i in range(3):
             if magnitude < (1, 10, 100)[i]:
-                uiFormat = u'%.' + unicode(3 - i) + u'f %s'
+                uiFormat = '%.' + str(3 - i) + 'f %s'
                 break
         else:
-            uiFormat = u'%i %s'
+            uiFormat = '%i %s'
         return uiFormat % (value, self._units)
 
     def _updateOnOffState(self, bit, logAll=True):
@@ -437,15 +435,15 @@ class PiGPIODevice:
         """
         onOffState = ON_OFF[bit]
         if self._bitValue != bit:
-            self._dev.updateStateOnServer(u'onOffState', onOffState,
+            self._dev.updateStateOnServer('onOffState', onOffState,
                                           clearErrorState=False)
             self._dev.updateStateImageOnServer(self.IMAGE_SEL[bit])
             self._bitValue = bit
             if logAll is None:
                 return
-            LOG.info(u'"%s" update to %s', self._dev.name, onOffState)
+            LOG.info('"%s" update to %s', self._dev.name, onOffState)
         elif logAll:
-            LOG.info(u'"%s" is %s', self._dev.name, onOffState)
+            LOG.info('"%s" is %s', self._dev.name, onOffState)
 
     def _updateSensorValue(self, voltage, logAll=True):
         """
@@ -463,7 +461,7 @@ class PiGPIODevice:
         percentChange = 100.0 * abs((sensorValue - self._sensorValue)
                                     / refValue)
         changeDetected = percentChange >= self._threshold
-        self._dev.updateStateOnServer(u'changeDetected', changeDetected)
+        self._dev.updateStateOnServer('changeDetected', changeDetected)
         self._sensorValue = sensorValue
 
         # Perform low and high limit checks and update the limit fault states
@@ -472,19 +470,19 @@ class PiGPIODevice:
         event = None
         if self._lowLimitCheck:
             lowFault = sensorValue < self._lowLimit
-            self._dev.updateStateOnServer(u'lowFault', lowFault)
+            self._dev.updateStateOnServer('lowFault', lowFault)
             if lowFault:
-                event = u'lowFault'
-                LOG.warning(u'"%s" low limit fault %.4f %s <  %.4f %s',
+                event = 'lowFault'
+                LOG.warning('"%s" low limit fault %.4f %s <  %.4f %s',
                             self._dev.name, sensorValue, self._units,
                             self._lowLimit, self._units)
 
         if self._highLimitCheck:
             highFault = sensorValue > self._highLimit
-            self._dev.updateStateOnServer(u'highFault', highFault)
+            self._dev.updateStateOnServer('highFault', highFault)
             if highFault:  # It's OK, lowFault and highFault are exclusive.
-                event = u'highFault'
-                LOG.warning(u'"%s" high limit fault %.4f %s > %.4f %s',
+                event = 'highFault'
+                LOG.warning('"%s" high limit fault %.4f %s > %.4f %s',
                             self._dev.name, sensorValue, self._units,
                             self._highLimit, self._units)
 
@@ -493,7 +491,7 @@ class PiGPIODevice:
 
         if self._lowLimitCheck or self._highLimitCheck:
             if event:
-                executeEventTrigger(u'limitFault', event)
+                executeEventTrigger('limitFault', event)
                 self._dev.updateStateImageOnServer(
                           indigo.kStateImageSel.SensorTripped)
             else:
@@ -506,13 +504,13 @@ class PiGPIODevice:
         # if a change was detected or if logAll=True.
 
         uiValue = self._getUiValue(sensorValue)
-        self._dev.updateStateOnServer(u'sensorValue', sensorValue,
+        self._dev.updateStateOnServer('sensorValue', sensorValue,
                                       uiValue=uiValue, clearErrorState=False)
         if changeDetected:
-            LOG.info(u'"%s" update to %.4f %s',
+            LOG.info('"%s" update to %.4f %s',
                      self._dev.name, sensorValue, self._units)
         elif logAll:
-            LOG.info(u'"%s" is %.4f %s',
+            LOG.info('"%s" is %.4f %s',
                      self._dev.name, sensorValue, self._units)
 
     def _read(self, logAll=True):  # Placeholder; must be overridden.
@@ -527,21 +525,21 @@ class PiGPIODevice:
         try:
             self._read(logAll=logAll)
         except Exception as errorMessage:
-            pigpioFatalError(self._dev, u'read', errorMessage)
+            pigpioFatalError(self._dev, 'read', errorMessage)
 
     def write(self, value):
         try:
             self._write(value)
         except Exception as errorMessage:
-            pigpioFatalError(self._dev, u'write', errorMessage)
+            pigpioFatalError(self._dev, 'write', errorMessage)
 
     def poll(self):
         if self._poll:
             now = indigo.server.getTime()
             secsSinceLast = (now - self._lastPoll).total_seconds()
-            interval = float(self._dev.pluginProps[u'pollingInterval'])
+            interval = float(self._dev.pluginProps['pollingInterval'])
             if secsSinceLast >= interval:
-                logAll = self._dev.pluginProps[u'logAll']
+                logAll = self._dev.pluginProps['logAll']
                 self.read(logAll=logAll)
                 self._pollCount += 1
                 self._lastPoll = now
@@ -551,8 +549,8 @@ class PiGPIODevice:
                     if secsSinceLast >= interval:
                         averageInterval = secsSinceLast / self._pollCount
                         averageRate = 1 / averageInterval
-                        LOG.info(u'"%s" average polling interval is %4.2f '
-                                 u'secs, rate is %4.2f per sec',
+                        LOG.info('"%s" average polling interval is %4.2f '
+                                 'secs, rate is %4.2f per sec',
                                  self._dev.name, averageInterval, averageRate)
                         self._pollCount = 0
                         self._lastStatus = now
@@ -563,7 +561,7 @@ class PiGPIODevice:
 
         if self._dev.id in ioDevices:
             del ioDevices[self._dev.id]
-            LOG.debug(u'"%s" stopped', self._dev.name)
+            LOG.debug('"%s" stopped', self._dev.name)
 
         # Release pigpiod resources.
 
@@ -580,7 +578,7 @@ class PiGPIODevice:
             self._releaseResource(self._connectionId)
 
         except Exception as errorMessage:
-            pigpioFatalError(self._dev, u'stop', errorMessage)
+            pigpioFatalError(self._dev, 'stop', errorMessage)
 
 
 ###############################################################################
@@ -601,7 +599,7 @@ class ADC12(PiGPIODevice):
     def __init__(self, dev):
         PiGPIODevice.__init__(self, dev)
 
-        inputConfig = int(dev.pluginProps[u'inputConfiguration'])
+        inputConfig = int(dev.pluginProps['inputConfiguration'])
         self._data = (0x04 | inputConfig << 1 | self._adcChan >> 2,
                       self._adcChan << 6, 0)
 
@@ -610,7 +608,7 @@ class ADC12(PiGPIODevice):
         nBytes1, bytes1 = self._pi.spi_xfer(self._handle, self._data)
         raw1 = (bytes1[1] & 0x0f) << 8 | bytes1[2]
         voltage1 = self.VREF * raw1 / 4096
-        LOG.debug(u'"%s" read %s | %s | %s | %s | %s',
+        LOG.debug('"%s" read %s | %s | %s | %s | %s',
                   self._dev.name, hexStr(self._data), nBytes1,
                   hexStr(bytes1), raw1, voltage1)
 
@@ -618,14 +616,14 @@ class ADC12(PiGPIODevice):
             nBytes2, bytes2 = self._pi.spi_xfer(self._handle, self._data)
             raw2 = (bytes2[1] & 0x0f) << 8 | bytes2[2]
             voltage2 = self.VREF * raw2 / 4096
-            LOG.debug(u'"%s" read %s | %s | %s | %s | %s',
+            LOG.debug('"%s" read %s | %s | %s | %s | %s',
                       self._dev.name, hexStr(self._data), nBytes2,
                       hexStr(bytes2), raw2, voltage2)
             refVoltage = voltage1 if voltage1 else 0.001
             percentChange = 100.0 * (abs((voltage1 - voltage2) / refVoltage))
             if percentChange >= self._threshold:
-                LOG.warning(u'"%s" spi check different consecutive reads '
-                            u'%.4f %.4f', self._dev.name, voltage1, voltage2)
+                LOG.warning('"%s" spi check different consecutive reads '
+                            '%.4f %.4f', self._dev.name, voltage1, voltage2)
                 voltage1 = voltage2
 
         self._updateSensorValue(voltage1, logAll=logAll)
@@ -651,10 +649,10 @@ class ADC18(PiGPIODevice):
     def __init__(self, dev):
         PiGPIODevice.__init__(self, dev)
 
-        self._res = int(dev.pluginProps[u'resolution'])
-        resIndex = (self._res - 12) / 2
-        gain = dev.pluginProps[u'gain']
-        gainIndex = u'1248'.find(gain)
+        self._res = int(dev.pluginProps['resolution'])
+        resIndex = (self._res - 12) >> 1
+        gain = dev.pluginProps['gain']
+        gainIndex = '1248'.find(gain)
         self._config = (self.NOT_READY | self._adcChan << 5
                         | self.CONVERSION_MODE << 4
                         | resIndex << 2 | gainIndex)
@@ -695,7 +693,7 @@ class ADC18(PiGPIODevice):
             raw = - 1 * raw  # Make it negative.
 
         voltage = self.VREF * raw / (msb * self._pga)
-        LOG.debug(u'"%s" read %s | %s | %s | %s',
+        LOG.debug('"%s" read %s | %s | %s | %s',
                   self._dev.name, numReads, hexStr(bytes_), raw, voltage)
         self._updateSensorValue(voltage, logAll=logAll)
 
@@ -718,22 +716,22 @@ class DAC12(PiGPIODevice):
     def __init__(self, dev):
         PiGPIODevice.__init__(self, dev)
 
-        self._sensorValue = dev.states.get(u'sensorValue', 0.0)
-        self._scale = float(dev.pluginProps[u'scaling'])
-        self._units = dev.pluginProps[u'units']
-        self._dacChan = int(dev.pluginProps[u'dacChannel'])
-        self._gain = int(dev.pluginProps[u'gain'])
+        self._sensorValue = dev.states.get('sensorValue', 0.0)
+        self._scale = float(dev.pluginProps['scaling'])
+        self._units = dev.pluginProps['units']
+        self._dacChan = int(dev.pluginProps['dacChannel'])
+        self._gain = int(dev.pluginProps['gain'])
         self._uiValue = None
 
     def _read(self, logAll=True):
-        LOG.info(u'"%s" is %.4f %s', self._dev.name, self._sensorValue,
+        LOG.info('"%s" is %.4f %s', self._dev.name, self._sensorValue,
                  self._units)
 
     def _write(self, value):
         try:  # Check the argument.
             sensorValue = float(value)
         except ValueError:
-            LOG.warning(u'"%s" invalid output value %s; write ignored;',
+            LOG.warning('"%s" invalid output value %s; write ignored;',
                         self._dev.name, value)
             return
 
@@ -745,7 +743,7 @@ class DAC12(PiGPIODevice):
             data = (self._dacChan << 7 | (self._gain & 1) << 5
                     | 0x10 | raw >> 8, raw & 0xff)
             nBytes = self._pi.spi_write(self._handle, data)
-            LOG.debug(u'"%s" xfer %s | %s | %s | %s',
+            LOG.debug('"%s" xfer %s | %s | %s | %s',
                       self._dev.name, voltage, raw, hexStr(data), nBytes)
 
         # Update and log the sensorValue state.
@@ -754,13 +752,13 @@ class DAC12(PiGPIODevice):
         if sensorValue != self._sensorValue or uiValue != self._uiValue:
             self._sensorValue = sensorValue
             self._uiValue = uiValue
-            self._dev.updateStateOnServer(u'sensorValue', sensorValue,
+            self._dev.updateStateOnServer('sensorValue', sensorValue,
                                           uiValue=uiValue,
                                           clearErrorState=False)
-            LOG.info(u'"%s" update to %.4f %s',
+            LOG.info('"%s" update to %.4f %s',
                      self._dev.name, sensorValue, self._units)
         else:
-            LOG.info(u'"%s" is %.4f %s',
+            LOG.info('"%s" is %.4f %s',
                      self._dev.name, sensorValue, self._units)
 
 
@@ -778,9 +776,9 @@ class PiGPIO(PiGPIODevice):
 
     # Class constant:
 
-    PUD = {u'off': pigpio.PUD_OFF,  # GPIO pullup parameter definitions.
-           u'up': pigpio.PUD_UP,
-           u'down': pigpio.PUD_DOWN}
+    PUD = {'off': pigpio.PUD_OFF,  # GPIO pullup parameter definitions.
+           'up': pigpio.PUD_UP,
+           'down': pigpio.PUD_DOWN}
 
     # Internal instance methods:
 
@@ -789,22 +787,22 @@ class PiGPIO(PiGPIODevice):
 
         # Set internal instance attributes and configure gpio device.
 
-        self._gpioNum = int(dev.pluginProps[u'gpioNumber'])
+        self._gpioNum = int(dev.pluginProps['gpioNumber'])
         self._callbackId = None
 
-        if dev.deviceTypeId == u'digitalInput':
+        if dev.deviceTypeId == 'digitalInput':
             self._pi.set_mode(self._gpioNum, pigpio.INPUT)
-            pullup = dev.pluginProps[u'pullup']
+            pullup = dev.pluginProps['pullup']
             self._pi.set_pull_up_down(self._gpioNum, self.PUD[pullup])
-            if dev.pluginProps[u'callback']:
+            if dev.pluginProps['callback']:
                 self._callbackId = self._pi.callback(self._gpioNum,
                                                      pigpio.EITHER_EDGE,
                                                      self._callback)
                 self._priorTic = self._pi.get_current_tick()
-                self._bounceFilter = dev.pluginProps[u'bounceFilter']
-                self._bounceTime = int(dev.pluginProps[u'bounceTime'])
-                self._logBounce = dev.pluginProps[u'logBounce']
-                self._relayInterrupts = dev.pluginProps[u'relayInterrupts']
+                self._bounceFilter = dev.pluginProps['bounceFilter']
+                self._bounceTime = int(dev.pluginProps['bounceTime'])
+                self._logBounce = dev.pluginProps['logBounce']
+                self._relayInterrupts = dev.pluginProps['relayInterrupts']
                 if self._relayInterrupts:
 
                     # Initialize public instance attribute to collect
@@ -814,19 +812,19 @@ class PiGPIO(PiGPIODevice):
 
                     self.interruptDevices = []
 
-        elif dev.deviceTypeId == u'digitalOutput':
+        elif dev.deviceTypeId == 'digitalOutput':
             self._pi.set_mode(self._gpioNum, pigpio.OUTPUT)
-            self._momentary = dev.pluginProps[u'momentary']
-            self._delay = float(dev.pluginProps[u'turnOffDelay'])
-            self._pwm = dev.pluginProps[u'pwm']
+            self._momentary = dev.pluginProps['momentary']
+            self._delay = float(dev.pluginProps['turnOffDelay'])
+            self._pwm = dev.pluginProps['pwm']
             if self._pwm:
                 self._pi.set_PWM_range(self._gpioNum, 100)
-                freq = int(dev.pluginProps[u'frequency'])
+                freq = int(dev.pluginProps['frequency'])
                 self._pi.set_PWM_frequency(self._gpioNum, freq)
-                self._duty = int(dev.pluginProps[u'dutyCycle'])
+                self._duty = int(dev.pluginProps['dutyCycle'])
 
     def _callback(self, gpioNum, pinBit, tic):
-        LOG.debug(u'"%s" callback %s %s %s µs',
+        LOG.debug('"%s" callback %s %s %s µs',
                   self._dev.name, gpioNum, pinBit, tic)
         if pinBit in (ON, OFF):
             bit = pinBit ^ self._inv
@@ -838,7 +836,7 @@ class PiGPIO(PiGPIODevice):
             if self._bounceFilter:
                 if dt < self._bounceTime:  # State is bouncing.
                     if self._logBounce:
-                        LOG.warning(u'"%s" %s µs bounce; update to %s ignored',
+                        LOG.warning('"%s" %s µs bounce; update to %s ignored',
                                     self._dev.name, dt, ON_OFF[bit])
                     return  # Ignore the bounced state change.
 
@@ -853,11 +851,11 @@ class PiGPIO(PiGPIODevice):
                         if ioDev and ioDev.interrupt():  # ioDev interrupt.
                             break  # Only one match allowed per interrupt.
                     else:
-                        LOG.warning(u'"%s" no match in interrupt devices list',
+                        LOG.warning('"%s" no match in interrupt devices list',
                                     self._dev.name)
                     self._pi.set_watchdog(self._gpioNum, 200)  # Set watchdog.
                 else:  # Interrupt reset; log time and clear the watchdog.
-                    LOG.debug(u'"%s" interrupt time is %s ms',
+                    LOG.debug('"%s" interrupt time is %s ms',
                               self._dev.name, dt / 1000)
                     self._pi.set_watchdog(self._gpioNum, 0)
 
@@ -868,14 +866,14 @@ class PiGPIO(PiGPIODevice):
             self._updateOnOffState(bit, logAll=logAll)
 
         else:  # Interrupt reset timeout.
-            LOG.warning(u'"%s" interrupt reset timeout', self._dev.name)
+            LOG.warning('"%s" interrupt reset timeout', self._dev.name)
             for ioDev in self.interruptDevices:
                 ioDev.resetInterrupt()
             self._pi.set_watchdog(self._gpioNum, 0)  # Clear the watchdog timer
 
     def _read(self, logAll=True):
         bit = self._pi.read(self._gpioNum) ^ self._inv
-        LOG.debug(u'"%s" read %s', self._dev.name, ON_OFF[bit])
+        LOG.debug('"%s" read %s', self._dev.name, ON_OFF[bit])
         self._updateOnOffState(bit, logAll=logAll)
         return bit
 
@@ -883,7 +881,7 @@ class PiGPIO(PiGPIODevice):
         bit = int(value)
         if bit in (ON, OFF):
             self._pi.write(self._gpioNum, bit)
-            LOG.debug(u'"%s" write %s', self._dev.name, ON_OFF[bit])
+            LOG.debug('"%s" write %s', self._dev.name, ON_OFF[bit])
             self._updateOnOffState(bit)
             if bit:
                 if self._pwm:
@@ -892,7 +890,7 @@ class PiGPIO(PiGPIODevice):
                     sleep(self._delay)
                     self._write(OFF)
         else:
-            LOG.warning(u'"%s" invalid output value %s; write ignored',
+            LOG.warning('"%s" invalid output value %s; write ignored',
                         self._dev.name, bit)
 
 
@@ -910,19 +908,19 @@ class IOExpander(PiGPIODevice):
 
     # MCP23XXX register address constants:
 
-    REG_BASE_ADDR = {u'IODIR':   0x00,  # I/O Direction Register.
-                     u'IPOL':    0x01,  # Input Polarity Register.
-                     u'GPINTEN': 0x02,  # Interrupt-on-change Control Register.
-                     u'DEFVAL':  0x03,  # Default Value Register.
-                     u'INTCON':  0x04,  # Interrupt-on-Change Control Register.
-                     u'IOCON':   0x05,  # I/O Configuration Register.
-                     u'GPPU':    0x06,  # Pullup Resistor Config Register.
-                     u'INTF':    0x07,  # Interrupt Flag Register.
-                     u'INTCAP':  0x08,  # Interrupt Capture Register.
-                     u'GPIO':    0x09,  # Port Register.
-                     u'OLAT':    0x0a,  # Output Latch Register.
-                     u'IOCONB0': 0x0b}  # IOCON register for port B in the
-    #                                     BANK 0 mapping.
+    REG_BASE_ADDR = {'IODIR':   0x00,  # I/O Direction Register.
+                     'IPOL':    0x01,  # Input Polarity Register.
+                     'GPINTEN': 0x02,  # Interrupt-on-change Control Register.
+                     'DEFVAL':  0x03,  # Default Value Register.
+                     'INTCON':  0x04,  # Interrupt-on-Change Control Register.
+                     'IOCON':   0x05,  # I/O Configuration Register.
+                     'GPPU':    0x06,  # Pullup Resistor Config Register.
+                     'INTF':    0x07,  # Interrupt Flag Register.
+                     'INTCAP':  0x08,  # Interrupt Capture Register.
+                     'GPIO':    0x09,  # Port Register.
+                     'OLAT':    0x0a,  # Output Latch Register.
+                     'IOCONB0': 0x0b}  # IOCON register for port B in the
+    #                                    BANK 0 mapping.
 
     # The above addresses (except the last one) are for the MCP23X08 and the
     # MCP23X17 Port A in the BANK 1 register address mapping.  Port B addresses
@@ -957,13 +955,13 @@ class IOExpander(PiGPIODevice):
 
         # Define internal attributes.
 
-        ioPort = dev.pluginProps[u'ioPort']
-        self._offset = 0x10 if ioPort == u'b' else 0x00
-        bitNum = int(dev.pluginProps[u'bitNumber'])
+        ioPort = dev.pluginProps['ioPort']
+        self._offset = 0x10 if ioPort == 'b' else 0x00
+        bitNum = int(dev.pluginProps['bitNumber'])
         self._mask = 1 << bitNum
 
         if self._interface is SPI:
-            self._spiDevAddr = int(dev.pluginProps[u'spiDevAddress'], 16)
+            self._spiDevAddr = int(dev.pluginProps['spiDevAddress'], 16)
 
         # Configure the IOCON register with a common set of bits (BANK,
         # SEQOP, and HAEN) that apply to all io device objects that use the
@@ -983,8 +981,8 @@ class IOExpander(PiGPIODevice):
 
         iocon = self.BANK | self.SEQOP | self.HAEN | self.INTPOL
 
-        self._writeRegister(u'IOCONB0', iocon)
-        self._writeRegister(u'IOCON', iocon)
+        self._writeRegister('IOCONB0', iocon)
+        self._writeRegister('IOCON', iocon)
 
         # Configure the IODIR, IPOL, GPPU, DEFVAL, INTCON, and GPINTEN
         # registers by setting the specific bit for this device
@@ -993,14 +991,14 @@ class IOExpander(PiGPIODevice):
         # to read the register, change the appropriate bit, and then write
         # it back.
 
-        if dev.deviceTypeId == u'digitalInput':
-            self._updateRegister(u'IODIR', self.INPUT)
-            self._updateRegister(u'IPOL', self._inv)  # Set input polarity.
-            pullup = int(dev.pluginProps[u'pullup'] == u'up')
-            self._updateRegister(u'GPPU', pullup)  # Set pullup option.
-            self._updateRegister(u'DEFVAL', OFF)  # Clear default bit.
-            self._updateRegister(u'INTCON', OFF)  # Interrupt on change.
-            hwInt = int(dev.pluginProps[u'hardwareInterrupt'])
+        if dev.deviceTypeId == 'digitalInput':
+            self._updateRegister('IODIR', self.INPUT)
+            self._updateRegister('IPOL', self._inv)  # Set input polarity.
+            pullup = int(dev.pluginProps['pullup'] == 'up')
+            self._updateRegister('GPPU', pullup)  # Set pullup option.
+            self._updateRegister('DEFVAL', OFF)  # Clear default bit.
+            self._updateRegister('INTCON', OFF)  # Interrupt on change.
+            hwInt = int(dev.pluginProps['hardwareInterrupt'])
             if hwInt:
 
                 # Set up the hardware interrupt relay as follows:
@@ -1010,57 +1008,57 @@ class IOExpander(PiGPIODevice):
                 # missing, try starting it.  If it fails to start raise a
                 # start exception for the device.
 
-                relayGPIO = dev.pluginProps[u'interruptRelayGPIO']
+                relayGPIO = dev.pluginProps['interruptRelayGPIO']
                 relayDev = indigo.devices[relayGPIO]
                 rioDev = ioDevices.get(relayDev.id)
                 if not rioDev:
-                    LOG.info(u'"%s" starting interrupt relay GPIO "%s"',
+                    LOG.info('"%s" starting interrupt relay GPIO "%s"',
                              self._dev.name, relayGPIO)
                     start(relayDev)
                     rioDev = ioDevices.get(relayDev.id)
                     if not rioDev:
-                        errorMessage = (u'interrupt relay GPIO "%s" not'
-                                        u' started' % relayGPIO)
+                        errorMessage = ('interrupt relay GPIO "%s" not'
+                                        ' started' % relayGPIO)
                         raise InitException(errorMessage)
 
                 if self._dev.id not in rioDev.interruptDevices:
                     rioDev.interruptDevices.append(self._dev.id)
                 for intDevId in rioDev.interruptDevices:
                     intDev = indigo.devices[intDevId]
-                    LOG.debug(u'"%s" %s', intDev.name, intDevId)
+                    LOG.debug('"%s" %s', intDev.name, intDevId)
 
-            self._updateRegister(u'GPINTEN', hwInt)
+            self._updateRegister('GPINTEN', hwInt)
 
-        elif dev.deviceTypeId == u'digitalOutput':
-            self._updateRegister(u'IODIR', self.OUTPUT)
-            self._momentary = dev.pluginProps[u'momentary']
-            self._delay = float(dev.pluginProps[u'turnOffDelay'])
+        elif dev.deviceTypeId == 'digitalOutput':
+            self._updateRegister('IODIR', self.OUTPUT)
+            self._momentary = dev.pluginProps['momentary']
+            self._delay = float(dev.pluginProps['turnOffDelay'])
 
     def _readRegister(self, register):
         registerAddress = self.REG_BASE_ADDR[register] + self._offset
 
         if self._interface is I2C:  # MCP230XX
             byte = self._pi.i2c_read_byte_data(self._handle, registerAddress)
-            LOG.debug(u'"%s" readRegister %s %02x',
+            LOG.debug('"%s" readRegister %s %02x',
                       self._dev.name, register, byte)
 
         else:  # MCP23SXX
             data = (self._spiDevAddr << 1 | self.READ, registerAddress, 0)
             nBytes1, bytes1 = self._pi.spi_xfer(self._handle, data)
             byte = bytes1[-1]
-            LOG.debug(u'"%s" readRegister %s %s | %s | %s',
+            LOG.debug('"%s" readRegister %s %s | %s | %s',
                       self._dev.name, register, hexStr(data), nBytes1,
                       hexStr(bytes1))
 
             if self.checkSPI:  # Check SPI integrity.
                 nBytes2, bytes2 = self._pi.spi_xfer(self._handle, data)
                 byte2 = bytes2[-1]
-                LOG.debug(u'"%s" readRegister %s %s | %s | %s',
+                LOG.debug('"%s" readRegister %s %s | %s | %s',
                           self._dev.name, register, hexStr(data), nBytes2,
                           hexStr(bytes2))
                 if byte != byte2:
-                    LOG.warning(u'"%s" readRegister %s spi check unequal '
-                                u'consecutive reads %02x %02x',
+                    LOG.warning('"%s" readRegister %s spi check unequal '
+                                'consecutive reads %02x %02x',
                                 self._dev.name, register, byte, byte2)
                     byte = byte2
         return byte
@@ -1070,25 +1068,25 @@ class IOExpander(PiGPIODevice):
 
         if self._interface is I2C:  # MCP230XX
             self._pi.i2c_write_byte_data(self._handle, registerAddress, byte)
-            LOG.debug(u'"%s" writeRegister %s %02x',
+            LOG.debug('"%s" writeRegister %s %02x',
                       self._dev.name, register, byte)
 
         else:  # MCP23SXX
             data = (self._spiDevAddr << 1 | self.WRITE, registerAddress, byte)
             nBytes = self._pi.spi_write(self._handle, data)
-            LOG.debug(u'"%s" writeRegister %s %s | %s',
+            LOG.debug('"%s" writeRegister %s %s | %s',
                       self._dev.name, register, hexStr(data), nBytes)
 
     def _updateRegister(self, register, bit):
         byte = self._readRegister(register)
         updatedByte = byte | self._mask if bit else byte & ~self._mask
         if updatedByte != byte:
-            LOG.debug(u'"%s" updateRegister %s %02x | %s | %02x',
+            LOG.debug('"%s" updateRegister %s %02x | %s | %02x',
                       self._dev.name, register, byte, bit, updatedByte)
             self._writeRegister(register, updatedByte)
 
     def _read(self, logAll=True):
-        byte = self._readRegister(u'GPIO')
+        byte = self._readRegister('GPIO')
         bit = 1 if byte & self._mask else 0
         self._updateOnOffState(bit, logAll=logAll)
         return bit
@@ -1096,13 +1094,13 @@ class IOExpander(PiGPIODevice):
     def _write(self, value):
         bit = int(value)
         if bit in (ON, OFF):
-            self._updateRegister(u'GPIO', bit)
+            self._updateRegister('GPIO', bit)
             self._updateOnOffState(bit)
             if bit and self._momentary:
                 sleep(self._delay)
                 self._write(OFF)
         else:
-            LOG.warning(u'"%s" invalid output value %s; write ignored',
+            LOG.warning('"%s" invalid output value %s; write ignored',
                         self._dev.name, bit)
 
     # Public instance methods:
@@ -1113,7 +1111,7 @@ class IOExpander(PiGPIODevice):
             # Read and check interrupt flag register for interrupt on this
             # device.
 
-            intf = self._readRegister(u'INTF')
+            intf = self._readRegister('INTF')
             if not intf & self._mask:
                 return  # No match for this device.
             else:
@@ -1121,9 +1119,9 @@ class IOExpander(PiGPIODevice):
                 # Interrupt flag bit matches device bit; read interrupt capture
                 # register and update the state.
 
-                intcap = self._readRegister(u'INTCAP')
+                intcap = self._readRegister('INTCAP')
                 bit = 1 if intcap & self._mask else 0
-                LOG.debug(u'"%s" interrupt %02x | %02x | %s',
+                LOG.debug('"%s" interrupt %02x | %02x | %s',
                           self._dev.name, intf, intcap, ON_OFF[bit])
                 self._updateOnOffState(bit)
 
@@ -1131,15 +1129,15 @@ class IOExpander(PiGPIODevice):
 
                 lostInterrupts = intf ^ self._mask
                 if lostInterrupts:  # Any other bits set in interrupt flag reg?
-                    LOG.warning(u'"%s" lost interrupts %02x',
+                    LOG.warning('"%s" lost interrupts %02x',
                                 self._dev.name, lostInterrupts)
                 return True  # Signal an interrupt match.
 
         except Exception as errorMessage:
-            pigpioFatalError(self._dev, u'int', errorMessage)
+            pigpioFatalError(self._dev, 'int', errorMessage)
 
     def resetInterrupt(self):
         try:
-            self._readRegister(u'GPIO')  # Read port register to clear int.
+            self._readRegister('GPIO')  # Read port register to clear int.
         except Exception as errorMessage:
-            pigpioFatalError(self._dev, u'int', errorMessage)
+            pigpioFatalError(self._dev, 'int', errorMessage)

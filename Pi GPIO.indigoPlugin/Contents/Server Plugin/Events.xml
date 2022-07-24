@@ -6,7 +6,7 @@
 #                                                                             #
 ###############################################################################
 
- PACKAGE:  Raspberry Pi General Purpose Input/Output for Indigo (Pi GPIO)
+ PACKAGE:  Raspberry Pi General Purpose Input/Output for Indigo
   MODULE:  Events.xml
    TITLE:  Pi GPIO event (trigger) objects (Events.xml)
 FUNCTION:  Events.xml defines Pi GPIO events that may trigger specific indigo
