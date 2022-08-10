@@ -3,24 +3,31 @@
 <plist version="1.0">
 <dict>
 	<key>PluginVersion</key>
-	<string>0.5.7</string>
+	<string>1.0.0</string>
+
 	<key>ServerApiVersion</key>
 	<string>3.0</string>
+
 	<key>IwsApiVersion</key>
 	<string>1.0.0</string>
+
 	<key>CFBundleDisplayName</key>
 	<string>Pi GPIO</string>
+
 	<key>CFBundleName</key>
 	<string>Pi GPIO</string>
+
 	<key>CFBundleIdentifier</key>
 	<string>net.papamac.indigoplugin.pigpio</string>
+
 	<key>CFBundleVersion</key>
 	<string>1.0.0</string>
+
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
 			<key>CFBundleURLName</key>
-			<string>http://info.papamac.net/pigpio</string>
+			<string>http://github.com/papamac/PiGPIO</string>
 		</dict>
 	</array>
 </dict>
