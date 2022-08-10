@@ -1,6 +1,6 @@
 ![](https://raw.githubusercontent.com/papamac/PiGPIO/master/files/raspi4b.png)
 
-## Raspberry Pi General Purpose Input/Output for indigo ##
+# Raspberry Pi General Purpose Input/Output for indigo #
 
 Raspberry Pi is a powerful credit card sized computer with extensive General
 Purpose Input/Output (GPIO) capabilities that make it an ideal addition to an
@@ -31,7 +31,7 @@ The following table lists currently supported devices and boards. Live links
 take you to web pages providing additional details.
 
  | Mfgr                 | Functions                                                | Bus                         | Devices                                       | Description                                                                                                                                                             |
- |----------------------------------------------------------|-----------------------------|-----------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------|
+ |----------------------------------------------------------|-----------------------------|-----------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------|
  | Microchip Technology | 8-Bit DIO                                                | I2C<br/>SPI                 | MCP23008<br/>MCP23S08                         | [8-Bit IO Expander with Serial Interface](https://ww1.microchip.com/downloads/en/DeviceDoc/21919e.pdf)                                                                  |
  | Microchip Technology | 16-Bit DIO                                               | I2C<br/>SPI                 | MCP23017<br/>MCP23S17                         | [16-Bit IO Expander with Serial Interface](https://ww1.microchip.com/downloads/en/devicedoc/20001952c.pdf)                                                              |
  | Microchip Technology | 12-Bit ADC                                               | SPI                         | MCP3202                                       | [2.7V Dual Channel 12-Bit A/D Converter with SPI Serial Interface](https://ww1.microchip.com/downloads/en/DeviceDoc/21034F.pdf)                                         |
@@ -47,15 +47,15 @@ take you to web pages providing additional details.
 
 The following table lists the top level requirements for the Pi GPIO plugin:
 
-| Requirement                                 | Description                                                                                                                                 |
-|---------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------|
-| Indigo                                      | Version 2022.1 or later                                                                                                                     |
-| Python Library (API)                        | Official (3.X)                                                                                                                              |
-| Macintosh computer<br/>for pi configuration | Large display preferred<br/>SD card reader                                                                                                  |
- | Raspberry Pi                                | Model 4b (3b+ will work, but display config must be changed)<br/>1 GB RAM or more<br/>Premium microSD card (16 GB or more, U3 and A2 rated) |
-| Local Network                               | Reliable connection between the Mac and the pi<br/>Wired network preferred (1000 Mb/sec)<br/>Wireless OK if faster than 50 Mb/sec           |
-| Internet                                    | At least 25 Mb/sec for software downloads                                                                                                   |
-| Hardware Interface                          | Raspberry Pi GPIO pins<br/>Pi I/O devices and HATs from above table                                                                         |
+| Requirement                                 | Description                                                                                                        |
+|---------------------------------------------|--------------------------------------------------------------------------------------------------------------------|
+| Indigo                                      | Version 2022.1 or later                                                                                            |
+| Python Library (API)                        | Official (3.X)                                                                                                     |
+| Macintosh computer<br/>for pi configuration | Large display preferred<br/>SD card reader                                                                         |
+| Raspberry Pi                                | 4 model b with 1 GB RAM or more<br/>microSD card with 16 GB or more, U3 / A2 rated<br/>5V / 3A USB-C power adapter |
+| Local Network                               | Wired network preferred (1000 Mb/sec)<br/>Wireless OK if faster than 50 Mb/sec                                     |
+| Internet                                    | At least 25 Mb/sec for software downloads                                                                          |
+| Hardware Interfaces                         | Raspberry Pi GPIO pins<br/>Pi I/O devices and HATs from above table                                                |
 
 Please see the
 [Pi GPIO Wiki](https://github.com/papamac/VirtualGarageDoor/wiki)
