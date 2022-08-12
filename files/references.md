@@ -1,0 +1,18 @@
+ | Category             | Link                                                                                                                                                                    |
+ |-------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------|
+ | AB Electronics       | [ADC-DAC Pi Zero HAT](https://abelectronics.co.uk/p/74/adc-dac-pi-zero-raspberry-pi-adc-and-dac-expansion-board)                                                        |
+ | AB Electronics       | [ADC Differential Pi HAT](https://abelectronics.co.uk/p/65/adc-differential-pi-raspberry-pi-analogue-to-digital-converter)                                              |
+ | AB Electronics       | [ADC Pi HAT](https://abelectronics.co.uk/p/69/adc-pi-raspberry-pi-analogue-to-digital-converter)                                                                        |
+ | AB Electronics       | [Expander Pi HAT](https://abelectronics.co.uk/p/50/expander-pi)                                                                                                         |
+ | AB Electronics       | [IO Pi Plus HAT](https://abelectronics.co.uk/p/50/expander-pi)                                                                                                          |
+ | Microchip Technology | [8-Bit IO Expander with Serial Interface](https://ww1.microchip.com/downloads/en/DeviceDoc/21919e.pdf)                                                                  |
+ | Microchip Technology | [16-Bit IO Expander with Serial Interface](https://ww1.microchip.com/downloads/en/devicedoc/20001952c.pdf)                                                              |
+ | Microchip Technology | [2.7V Dual Channel 12-Bit A/D Converter with SPI Serial Interface](https://ww1.microchip.com/downloads/en/DeviceDoc/21034F.pdf)                                         |
+ | Microchip Technology | [2.7V 4/8-Channel 12-Bit A/D Converters with SPI Serial Interface](http://ww1.microchip.com/downloads/en/devicedoc/21298e.pdf)                                          |
+ | Microchip Technology | [18-Bit, Multi-Channel ΔΣ Analog-to-Digital Converter with I2C Interface and On-Board Reference](http://ww1.microchip.com/downloads/en/devicedoc/22088c.pdf)            |
+ | Microchip Technology | [8/10/12-Bit, 1/2 Channel Voltage Output Digital-to-Analog Converter with Internal VREF and SPI Interface](https://ww1.microchip.com/downloads/en/DeviceDoc/22244B.pdf) |
+ | Raspberry Pi         | [Forums](https://forums.raspberrypi.com)                                                                                                                                |
+ | Raspberry Pi         | [GPIO and the 40-pin Header](https://raspberrypi.com/documentation/computers/os.html#gpio-and-the-40-pin-header)                                                        |
+ | Raspberry Pi         | [Software](https://raspberrypi.com/software)                                                                                                                            |
+ | REALVNC Software     | [Download VNC® Viewer](https://realvnc.com/en/connect/download/viewer)                                                                                                  |
+ | 52Pi                 | [DockerPi 4 Channel Relay HAT](https://wiki.52pi.com/index.php?title=EP-0099)                                                                                           |
