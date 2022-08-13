@@ -46,7 +46,6 @@ Please see the [Pi GPIO wiki](https://github.com/papamac/PiGPIO/wiki/Overview)
 for details on the design, configuration and use of the plugin and its
 Raspberry Pi host.
 
-
 You can download the latest version of the plugin at the 
 [Indigo Plugin Store](https://indigodomo.com/pluginstore).
 Your bug reports, comments and suggestions will be greatly appreciated.  Please
