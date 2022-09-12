@@ -11,8 +11,8 @@ FUNCTION:  Devices.xml defines Pi GPIO device objects, specifies ConfigUis, and
            (IOM).  The device object includes a pluginProps dictionary that
            contains the device properties from the xml.
   AUTHOR:  papamac
- VERSION:  0.5.4
-    DATE:  April 3, 2022
+ VERSION:  0.6.0
+    DATE:  August 28, 2022
 
 CHANGE LOG:
 
@@ -21,7 +21,8 @@ top level PiGPIO folder.  Changes of lesser importance may be described in
 individual module docstrings if appropriate.
 
 v0.5.0  11/28/2021  Fully functional beta version with minimal documentation.
-v0.5.4   4/ 3/2022  Update the digitalInput relayInterrupts label field.
+v0.5.4    4/3/2022  Update the digitalInput relayInterrupts label field.
+v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
 -->
 
 <Devices>
@@ -53,7 +54,8 @@ v0.5.4   4/ 3/2022  Update the digitalInput relayInterrupts label field.
 
 
             <!-- analogInput hostAddress -->
-            <Field id="hostAddress" type="textfield" defaultValue="raspi4b-io.local">
+            <Field id="hostAddress" type="textfield"
+                   defaultValue="raspi4b-io.local">
                 <Label>Host Address (FQDN or IPv4):</Label>
             </Field>
 
@@ -69,7 +71,8 @@ v0.5.4   4/ 3/2022  Update the digitalInput relayInterrupts label field.
                 <Label>Host Id:</Label>
             </Field>
 
-            <Field id="hostIdLabel" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true">
+            <Field id="hostIdLabel" type="label" fontSize="small"
+                   fontColor="darkgray" alignWithControl="true">
                 <Label>The Host Id is a unique code used to identify the host in the indigo device address.  It may be user specified or left blank for automatic assignment. Automatically assigned id's are extracted from the host FQDN ("name-id.domainName"), or simply set to "pi".</Label>
             </Field>
 
@@ -89,6 +92,7 @@ v0.5.4   4/ 3/2022  Update the digitalInput relayInterrupts label field.
             <Field id="ioDevType" type="menu" defaultValue="MCP3208">
                 <Label>I/O Device Name:</Label>
                 <List>
+                    <Option value="MCP3202">MCP3202 SPI 2-Channel 12-Bit ADC</Option>
                     <Option value="MCP3204">MCP3204 SPI 4-Channel 12-Bit ADC</Option>
                     <Option value="MCP3208">MCP3208 SPI 8-Channel 12-Bit ADC</Option>
                     <Option value="MCP3422">MCP3422 I2C 2-Channel 18-Bit ADC</Option>
@@ -99,7 +103,9 @@ v0.5.4   4/ 3/2022  Update the digitalInput relayInterrupts label field.
 
 
             <!-- analogInput spiChannel -->
-            <Field id="spiChannel" type="menu" defaultValue="0" visibleBindingId="ioDevType" visibleBindingValue="(MCP3204, MCP3208)">
+            <Field id="spiChannel" type="menu" defaultValue="0"
+                   visibleBindingId="ioDevType"
+                   visibleBindingValue="(MCP3202, MCP3204, MCP3208)">
                 <Label>SPI Channel:</Label>
                 <List>
                     <Option value="0">Channel 0</Option>
@@ -109,7 +115,9 @@ v0.5.4   4/ 3/2022  Update the digitalInput relayInterrupts label field.
 
 
             <!-- analogInput i2cAddress -->
-            <Field id="i2cAddress" type="menu" defaultValue="0x68" visibleBindingId="ioDevType" visibleBindingValue="(MCP3423, MCP3424)">
+            <Field id="i2cAddress" type="menu" defaultValue="0x68"
+                   visibleBindingId="ioDevType"
+                   visibleBindingValue="(MCP3423, MCP3424)">
                 <Label>I2C Address:</Label>
                 <List>
                     <Option value="0x68">0x68</Option>
@@ -125,9 +133,11 @@ v0.5.4   4/ 3/2022  Update the digitalInput relayInterrupts label field.
 
 
             <!-- analogInput adcChannel -->
-            <Field id="adcChannel" type="textfield" defaultValue="0" hidden="true"> </Field>
+            <Field id="adcChannel" type="textfield" hidden="true"> </Field>
 
-            <Field id="adcChannel2" type="menu" defaultValue="0" visibleBindingId="ioDevType" visibleBindingValue="(MCP3422, MCP3423)">
+            <Field id="adcChannel2" type="menu" defaultValue="0"
+                   visibleBindingId="ioDevType"
+                   visibleBindingValue="(MCO3202, MCP3422, MCP3423)">
                 <Label>ADC Channel Number:</Label>
                 <List>
                     <Option value="0">Channel 0</Option>
@@ -135,7 +145,9 @@ v0.5.4   4/ 3/2022  Update the digitalInput relayInterrupts label field.
                 </List>
             </Field>
 
-            <Field id="adcChannel4" type="menu" defaultValue="0" visibleBindingId="ioDevType" visibleBindingValue="(MCP3204, MCP3424)">
+            <Field id="adcChannel4" type="menu" defaultValue="0"
+                   visibleBindingId="ioDevType"
+                   visibleBindingValue="(MCP3204, MCP3424)">
                 <Label>ADC Channel Number:</Label>
                 <List>
                     <Option value="0">Channel 0</Option>
@@ -145,7 +157,9 @@ v0.5.4   4/ 3/2022  Update the digitalInput relayInterrupts label field.
                 </List>
             </Field>
 
-            <Field id="adcChannel8" type="menu" defaultValue="0" visibleBindingId="ioDevType" visibleBindingValue="MCP3208">
+            <Field id="adcChannel8" type="menu" defaultValue="0"
+                   visibleBindingId="ioDevType"
+                   visibleBindingValue="MCP3208">
                 <Label>ADC Channel Number:</Label>
                 <List>
                     <Option value="0">Channel 0</Option>
@@ -172,7 +186,9 @@ v0.5.4   4/ 3/2022  Update the digitalInput relayInterrupts label field.
 
 
             <!-- analogInput inputConfiguration -->
-            <Field id="inputConfiguration" type="menu" defaultValue="1" visibleBindingId="ioDevType" visibleBindingValue="(MCP3204, MCP3208)">
+            <Field id="inputConfiguration" type="menu" defaultValue="1"
+                   visibleBindingId="ioDevType"
+                   visibleBindingValue="(MCP3202, MCP3204, MCP3208)">
                 <Label>Input Configuration:</Label>
                 <List>
                     <Option value="1">Single-ended</Option>
@@ -182,7 +198,9 @@ v0.5.4   4/ 3/2022  Update the digitalInput relayInterrupts label field.
 
 
             <!-- analogInput resolution -->
-            <Field id="resolution" type="menu" defaultValue="12" visibleBindingId="ioDevType" visibleBindingValue="(MCP3422, MCP3423, MCP3424)">
+            <Field id="resolution" type="menu" defaultValue="12"
+                   visibleBindingId="ioDevType"
+                   visibleBindingValue="(MCP3422, MCP3423, MCP3424)">
                 <Label>Resolution:</Label>
                 <List>
                     <Option value="12">12 Bits</Option>
@@ -194,7 +212,9 @@ v0.5.4   4/ 3/2022  Update the digitalInput relayInterrupts label field.
 
 
             <!-- analogInput gain -->
-            <Field id="gain" type="menu" defaultValue="1" visibleBindingId="ioDevType" visibleBindingValue="(MCP3422, MCP3423, MCP3424)">
+            <Field id="gain" type="menu" defaultValue="1"
+                   visibleBindingId="ioDevType"
+                   visibleBindingValue="(MCP3422, MCP3423, MCP3424)">
                 <Label>PGA Gain:</Label>
                 <List>
                     <Option value="1">1X Gain</Option>
@@ -210,7 +230,8 @@ v0.5.4   4/ 3/2022  Update the digitalInput relayInterrupts label field.
                 <Label>Scaling Factor:</Label>
             </Field>
 
-            <Field id="scalingLabel" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true">
+            <Field id="scalingLabel" type="label" fontSize="small"
+                   fontColor="darkgray" alignWithControl="true">
                 <Label>The Scaling Factor is used to calibrate an analog input device for a specific application.  It multiplies all values read from the ADC.  The default value is for voltage measurements using the AB Electronics ADC Pi board.</Label>
             </Field>
 
@@ -235,11 +256,14 @@ v0.5.4   4/ 3/2022  Update the digitalInput relayInterrupts label field.
             </Field>
 
             <!-- analogInput bitRate -->
-            <Field id="bitRate" type="textfield" defaultValue="2000" visibleBindingId="ioDevType" visibleBindingValue="(MCP3204, MCP3208)">
+            <Field id="bitRate" type="textfield" defaultValue="2000"
+                   visibleBindingId="ioDevType"
+                   visibleBindingValue="(MCP3204, MCP3208)">
                 <Label>SPI Bit Rate (100-10000 kb/s):</Label>
             </Field>
 
-            <Field id="bitRateLabel" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true">
+            <Field id="bitRateLabel" type="label" fontSize="small"
+                   fontColor="darkgray" alignWithControl="true">
                 <Label>SPI bus data transfer rate for this device.  The bit rate in kb/s is usually equal to the SPI clock rate in kHz.</Label>
             </Field>
 
@@ -260,7 +284,8 @@ v0.5.4   4/ 3/2022  Update the digitalInput relayInterrupts label field.
                 <Label>Change Threshold (percent):</Label>
             </Field>
 
-            <Field id="changeLabel" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true">
+            <Field id="changeLabel" type="label" fontSize="small"
+                   fontColor="darkgray" alignWithControl="true">
                 <Label>Log a sensor value update if the value changes by this percentage or greater.</Label>
             </Field>
 
@@ -270,11 +295,14 @@ v0.5.4   4/ 3/2022  Update the digitalInput relayInterrupts label field.
                 <Label>Low Limit Check:</Label>
             </Field>
 
-            <Field id="lowLimit" type="textfield" defaultValue="0" visibleBindingId="lowLimitCheck" visibleBindingValue="true">
+            <Field id="lowLimit" type="textfield" defaultValue="0"
+                   visibleBindingId="lowLimitCheck" visibleBindingValue="true">
                 <Label>Low Limit:</Label>
             </Field>
 
-            <Field id="lowLimitLabel" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true" visibleBindingId="lowLimitCheck" visibleBindingValue="true">
+            <Field id="lowLimitLabel" type="label" fontSize="small"
+                   fontColor="darkgray" alignWithControl="true"
+                   visibleBindingId="lowLimitCheck" visibleBindingValue="true">
                 <Label>Log a low limit fault if the sensor value is less than the low limit.</Label>
             </Field>
 
@@ -284,11 +312,16 @@ v0.5.4   4/ 3/2022  Update the digitalInput relayInterrupts label field.
                 <Label>High Limit Check:</Label>
             </Field>
 
-            <Field id="highLimit" type="textfield" defaultValue="0" visibleBindingId="highLimitCheck" visibleBindingValue="true">
+            <Field id="highLimit" type="textfield" defaultValue="0"
+                   visibleBindingId="highLimitCheck"
+                   visibleBindingValue="true">
                 <Label>High Limit:</Label>
             </Field>
 
-            <Field id="highLimitLabel" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true" visibleBindingId="highLimitCheck" visibleBindingValue="true">
+            <Field id="highLimitLabel" type="label" fontSize="small"
+                   fontColor="darkgray" alignWithControl="true"
+                   visibleBindingId="highLimitCheck"
+                   visibleBindingValue="true">
                 <Label>Log a high limit fault if the sensor value is greater than the high limit.</Label>
             </Field>
 
@@ -309,25 +342,32 @@ v0.5.4   4/ 3/2022  Update the digitalInput relayInterrupts label field.
                 <Label>Enable Input Polling:</Label>
             </Field>
 
-            <Field id="pollingLabel" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true">
+            <Field id="pollingLabel" type="label" fontSize="small"
+                   fontColor="darkgray" alignWithControl="true">
                 <Label>Read the input at regular intervals, perform change detection and limit checks, update the sensor value state, and log value as needed.</Label>
             </Field>
 
-            <Field id="pollingInterval" type="textfield" defaultValue="10" visibleBindingId="polling" visibleBindingValue="true">
+            <Field id="pollingInterval" type="textfield" defaultValue="10"
+                   visibleBindingId="polling" visibleBindingValue="true">
                 <Label>Polling Interval (seconds):</Label>
             </Field>
 
-            <Field id="intervalLabel" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true" visibleBindingId="polling" visibleBindingValue="true">
+            <Field id="intervalLabel" type="label" fontSize="small"
+                   fontColor="darkgray" alignWithControl="true"
+                   visibleBindingId="polling" visibleBindingValue="true">
                 <Label>Setting the interval to 0.0 reads the output in each pass through the run loop.  The actual polling interval depends on the run loop time.</Label>
             </Field>
 
 
             <!-- analogInput logAll -->
-            <Field id="logAll" type="checkbox" defaultValue="false" visibleBindingId="polling" visibleBindingValue="true">
+            <Field id="logAll" type="checkbox" defaultValue="false"
+                   visibleBindingId="polling" visibleBindingValue="true">
                 <Label>Log All Polling Results:</Label>
             </Field>
 
-            <Field id="logAllLabel" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true" visibleBindingId="polling" visibleBindingValue="true">
+            <Field id="logAllLabel" type="label" fontSize="small"
+                   fontColor="darkgray" alignWithControl="true"
+                   visibleBindingId="polling" visibleBindingValue="true">
                 <Label>Log the sensor value after each poll, regardless of the change.  By default, only changed values are logged.</Label>
             </Field>
 
@@ -395,7 +435,8 @@ v0.5.4   4/ 3/2022  Update the digitalInput relayInterrupts label field.
 
 
             <!-- analogOutput hostAddress -->
-            <Field id="hostAddress" type="textfield" defaultValue="raspi4b-io.local">
+            <Field id="hostAddress" type="textfield"
+                   defaultValue="raspi4b-io.local">
                 <Label>Host Address (FQDN or IPv4):</Label>
             </Field>
 
@@ -411,7 +452,8 @@ v0.5.4   4/ 3/2022  Update the digitalInput relayInterrupts label field.
                 <Label>Host Id:</Label>
             </Field>
 
-            <Field id="hostIdLabel" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true">
+            <Field id="hostIdLabel" type="label" fontSize="small"
+                   fontColor="darkgray" alignWithControl="true">
                 <Label>The Host Id is a unique code used to identify the host in the indigo device address.  It may be user specified or left blank for automatic assignment. Automatically assigned id's are extracted from the host FQDN ("name-id.domainName"), or simply set to "pi".</Label>
             </Field>
 
@@ -431,6 +473,10 @@ v0.5.4   4/ 3/2022  Update the digitalInput relayInterrupts label field.
             <Field id="ioDevType" type="menu" defaultValue="MCP4822">
                 <Label>I/O Device Name:</Label>
                 <List>
+                    <Option value="MCP4801">MCP4821 SPI Single Channel 8-Bit DAC</Option>
+                    <Option value="MCP4802">MCP4821 SPI Dual Channel 8-Bit DAC</Option>
+                    <Option value="MCP4811">MCP4821 SPI Single Channel 10-Bit DAC</Option>
+                    <Option value="MCP4812">MCP4821 SPI Dual Channel 10-Bit DAC</Option>
                     <Option value="MCP4821">MCP4821 SPI Single Channel 12-Bit DAC</Option>
                     <Option value="MCP4822">MCP4822 SPI Dual Channel 12-Bit DAC</Option>
                 </List>
@@ -448,9 +494,11 @@ v0.5.4   4/ 3/2022  Update the digitalInput relayInterrupts label field.
 
 
              <!-- analogOutput dacChannel -->
-            <Field id="dacChannel" type="textfield" defaultValue="0" hidden="true"> </Field>
+            <Field id="dacChannel" type="textfield" defaultValue="0"
+                   hidden="true"> </Field>
 
-            <Field id="dacChannel2" type="menu" defaultValue="0" visibleBindingId="ioDevType" visibleBindingValue="MCP4822">
+            <Field id="dacChannel2" type="menu" defaultValue="0"
+                   visibleBindingId="ioDevType" visibleBindingValue="(MCP4802, MCP4812, MCP4822)">
                 <Label>DAC Channel:</Label>
                 <List>
                     <Option value="0">Channel 0 (Output A)</Option>
@@ -485,7 +533,8 @@ v0.5.4   4/ 3/2022  Update the digitalInput relayInterrupts label field.
                 <Label>Scaling Factor:</Label>
             </Field>
 
-            <Field id="scalingLabel" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true">
+            <Field id="scalingLabel" type="label" fontSize="small"
+                   fontColor="darkgray" alignWithControl="true">
                 <Label>The Scaling Factor is used to calibrate an analog output device for a specific application.  It divides all values written to the DAC.</Label>
             </Field>
 
@@ -514,7 +563,8 @@ v0.5.4   4/ 3/2022  Update the digitalInput relayInterrupts label field.
                 <Label>SPI Bit Rate (100-10000 kb/s):</Label>
             </Field>
 
-            <Field id="bitRateLabel" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true">
+            <Field id="bitRateLabel" type="label" fontSize="small"
+                   fontColor="darkgray" alignWithControl="true">
                 <Label>SPI bus data transfer rate for this device.  The bit rate in kb/s is usually equal to the SPI clock rate in kHz.</Label>
             </Field>
 
@@ -523,7 +573,8 @@ v0.5.4   4/ 3/2022  Update the digitalInput relayInterrupts label field.
 
 
             <!-- analogOutput polling -->
-            <Field id="polling" type="checkbox" defaultValue="false" hidden="true"> </Field>
+            <Field id="polling" type="checkbox" defaultValue="false"
+                   hidden="true"> </Field>
 
 
         </ConfigUI>
@@ -552,7 +603,8 @@ v0.5.4   4/ 3/2022  Update the digitalInput relayInterrupts label field.
 
 
             <!-- digitalInput hostAddress -->
-            <Field id="hostAddress" type="textfield" defaultValue="raspi4b-io.local">
+            <Field id="hostAddress" type="textfield"
+                   defaultValue="raspi4b-io.local">
                 <Label>Host Address (FQDN or IPv4):</Label>
             </Field>
 
@@ -568,7 +620,8 @@ v0.5.4   4/ 3/2022  Update the digitalInput relayInterrupts label field.
                 <Label>Host Id:</Label>
             </Field>
 
-            <Field id="hostIdLabel" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true">
+            <Field id="hostIdLabel" type="label" fontSize="small"
+                   fontColor="darkgray" alignWithControl="true">
                 <Label>The Host Id is a unique code used to identify the host in the indigo device address.  It may be user specified or left blank for automatic assignment. Automatically assigned id's are extracted from the host FQDN ("name-id.domainName"), or simply set to "pi".</Label>
             </Field>
 
@@ -598,9 +651,11 @@ v0.5.4   4/ 3/2022  Update the digitalInput relayInterrupts label field.
 
 
             <!-- digitalInput gpioNumber -->
-            <Field id="gpioNumber" type="menu" defaultValue="17" visibleBindingId="ioDevType" visibleBindingValue="pigpio">
+            <Field id="gpioNumber" type="menu" defaultValue="17"
+                   visibleBindingId="ioDevType" visibleBindingValue="pigpio">
                 <Label>BCM GPIO Number:</Label>
                 <List>
+                    <Option value="4">GPIO 4</Option>
                     <Option value="5">GPIO 5</Option>
                     <Option value="6">GPIO 6</Option>
                     <Option value="12">GPIO 12</Option>
@@ -622,7 +677,9 @@ v0.5.4   4/ 3/2022  Update the digitalInput relayInterrupts label field.
 
 
             <!-- digitalInput i2cAddress -->
-            <Field id="i2cAddress" type="menu" defaultValue="0x20" visibleBindingId="ioDevType" visibleBindingValue="(MCP23008, MCP23017)">
+            <Field id="i2cAddress" type="menu" defaultValue="0x20"
+                   visibleBindingId="ioDevType"
+                   visibleBindingValue="(MCP23008, MCP23017)">
                 <Label>I2C Address:</Label>
                 <List>
                     <Option value="0x20">0x20</Option>
@@ -638,7 +695,9 @@ v0.5.4   4/ 3/2022  Update the digitalInput relayInterrupts label field.
 
 
             <!-- digitalInput spiChannel -->
-            <Field id="spiChannel" type="menu" defaultValue="0" visibleBindingId="ioDevType" visibleBindingValue="(MCP23S08, MCP23S17)">
+            <Field id="spiChannel" type="menu" defaultValue="0"
+                   visibleBindingId="ioDevType"
+                   visibleBindingValue="(MCP23S08, MCP23S17)">
                 <Label>SPI Channel:</Label>
                 <List>
                     <Option value="0">Channel 0</Option>
@@ -648,9 +707,11 @@ v0.5.4   4/ 3/2022  Update the digitalInput relayInterrupts label field.
 
 
             <!-- digitalInput spiDeviceAddress -->
-            <Field id="spiDevAddress" type="textfield" defaultValue="0x20" hidden="true"> </Field>
+            <Field id="spiDevAddress" type="textfield" defaultValue="0x20"
+                   hidden="true"> </Field>
 
-            <Field id="spiDevAddress4" type="menu" defaultValue="0x20" visibleBindingId="ioDevType" visibleBindingValue="MCP23S08">
+            <Field id="spiDevAddress4" type="menu" defaultValue="0x20"
+                   visibleBindingId="ioDevType" visibleBindingValue="MCP23S08">
                 <Label>SPI Device Address:</Label>
                 <List>
                     <Option value="0x20">0x20</Option>
@@ -660,7 +721,8 @@ v0.5.4   4/ 3/2022  Update the digitalInput relayInterrupts label field.
                 </List>
             </Field>
 
-            <Field id="spiDevAddress8" type="menu" defaultValue="0x20" visibleBindingId="ioDevType" visibleBindingValue="MCP23S17">
+            <Field id="spiDevAddress8" type="menu" defaultValue="0x20"
+                   visibleBindingId="ioDevType" visibleBindingValue="MCP23S17">
                 <Label>SPI Device Address:</Label>
                 <List>
                     <Option value="0x20">0x20</Option>
@@ -676,7 +738,9 @@ v0.5.4   4/ 3/2022  Update the digitalInput relayInterrupts label field.
 
 
             <!-- digitalInput ioPort -->
-            <Field id="ioPort" type="menu" defaultValue="a" visibleBindingId="ioDevType" visibleBindingValue="(MCP23017, MCP23S17)">
+            <Field id="ioPort" type="menu" defaultValue="a"
+                   visibleBindingId="ioDevType"
+                   visibleBindingValue="(MCP23017, MCP23S17)">
                 <Label>16-Bit I/O Expander Port:</Label>
                 <List>
                     <Option value="a">Port A</Option>
@@ -686,7 +750,9 @@ v0.5.4   4/ 3/2022  Update the digitalInput relayInterrupts label field.
 
 
             <!-- digitalInput bitNumber -->
-            <Field id="bitNumber" type="menu" defaultValue="0" visibleBindingId="ioDevType" visibleBindingValue="(MCP23008, MCP23017, MCP23S08, MCP23S17)">
+            <Field id="bitNumber" type="menu" defaultValue="0"
+                   visibleBindingId="ioDevType"
+                   visibleBindingValue="(MCP23008, MCP23017, MCP23S08, MCP23S17)">
                 <Label>I/O Port Bit Number:</Label>
                 <List>
                     <Option value="0">Bit 0</Option>
@@ -717,15 +783,18 @@ v0.5.4   4/ 3/2022  Update the digitalInput relayInterrupts label field.
                 <Label>Invert on/off State:</Label>
             </Field>
 
-            <Field id="invertLabel" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true">
+            <Field id="invertLabel" type="label" fontSize="small"
+                   fontColor="darkgray" alignWithControl="true">
                 <Label>If checked, the on/off state is set to on for logic low and to off for logic high.</Label>
             </Field>
 
 
             <!-- digitalInput pullup -->
-            <Field id="pullup" type="textfield" defaultValue="off" hidden="true"> </Field>
+            <Field id="pullup" type="textfield" defaultValue="off"
+                   hidden="true"> </Field>
 
-            <Field id="pullup1" type="menu" defaultValue="off" visibleBindingId="ioDevType" visibleBindingValue="pigpio">
+            <Field id="pullup1" type="menu" defaultValue="off"
+                   visibleBindingId="ioDevType" visibleBindingValue="pigpio">
                 <Label>Internal Input Bias:</Label>
                 <List>
                     <Option value="off">Open (no bias)</Option>
@@ -734,11 +803,15 @@ v0.5.4   4/ 3/2022  Update the digitalInput relayInterrupts label field.
                 </List>
             </Field>
 
-            <Field id="pullup1Label" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true" visibleBindingId="ioDevType" visibleBindingValue="pigpio">
+            <Field id="pullup1Label" type="label" fontSize="small"
+                   fontColor="darkgray" alignWithControl="true"
+                   visibleBindingId="ioDevType" visibleBindingValue="pigpio">
                 <Label>Open applies no bias to the digital input. Pull up or down biases the input to logic high or low through an internal resistor.</Label>
             </Field>
 
-            <Field id="pullup2" type="menu" defaultValue="off" visibleBindingId="ioDevType" visibleBindingValue="(MCP23008, MCP23017, MCP23S08, MCP23S17)">
+            <Field id="pullup2" type="menu" defaultValue="off"
+                   visibleBindingId="ioDevType"
+                   visibleBindingValue="(MCP23008, MCP23017, MCP23S08, MCP23S17)">
                 <Label>Internal Input Bias:</Label>
                 <List>
                     <Option value="off">Open (no bias)</Option>
@@ -746,16 +819,24 @@ v0.5.4   4/ 3/2022  Update the digitalInput relayInterrupts label field.
                 </List>
             </Field>
 
-            <Field id="pullup2Label" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true" visibleBindingId="ioDevType" visibleBindingValue="(MCP23008, MCP23017, MCP23S08, MCP23S17)">
+            <Field id="pullup2Label" type="label" fontSize="small"
+                   fontColor="darkgray" alignWithControl="true"
+                   visibleBindingId="ioDevType"
+                   visibleBindingValue="(MCP23008, MCP23017, MCP23S08, MCP23S17)">
                 <Label>Open applies no bias to the digital input. Pull up biases the input to logic high through an internal resistor.</Label>
             </Field>
 
             <!-- digitalInput bitRate -->
-            <Field id="bitRate" type="textfield" defaultValue="2000" visibleBindingId="ioDevType" visibleBindingValue="(MCP23S08, MCP23S17)">
+            <Field id="bitRate" type="textfield" defaultValue="2000"
+                   visibleBindingId="ioDevType"
+                   visibleBindingValue="(MCP23S08, MCP23S17)">
                 <Label>SPI Bit Rate (100-10000 kb/s):</Label>
             </Field>
 
-            <Field id="bitRateLabel" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true" visibleBindingId="ioDevType" visibleBindingValue="(MCP23S08, MCP23S17)">
+            <Field id="bitRateLabel" type="label" fontSize="small"
+                   fontColor="darkgray" alignWithControl="true"
+                   visibleBindingId="ioDevType"
+                   visibleBindingValue="(MCP23S08, MCP23S17)">
                 <Label>SPI bus data transfer rate for this device.  The bit rate in kb/s is usually equal to the SPI clock rate in kHz.</Label>
             </Field>
 
@@ -772,59 +853,80 @@ v0.5.4   4/ 3/2022  Update the digitalInput relayInterrupts label field.
 
 
             <!-- digitalInput callback -->
-            <Field id="callback" type="checkbox" defaultValue="false" visibleBindingId="ioDevType" visibleBindingValue="pigpio">
+            <Field id="callback" type="checkbox" defaultValue="false"
+                   visibleBindingId="ioDevType" visibleBindingValue="pigpio">
                 <Label>Use GPIO Callback:</Label>
             </Field>
 
-            <Field id="callbackLabel" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true" visibleBindingId="ioDevType" visibleBindingValue="pigpio">
+            <Field id="callbackLabel" type="label" fontSize="small"
+                   fontColor="darkgray" alignWithControl="true"
+                   visibleBindingId="ioDevType" visibleBindingValue="pigpio">
                 <Label>The GPIO callback updates/logs the device state on an input state change.  It eliminates the need for polling to detect changes.  It also enables interrupt relay and debounce filtering if requested.</Label>
             </Field>
 
 
             <!-- digitalInput bounceFilter -->
-            <Field id="bounceFilter" type="checkbox" defaultValue="false" visibleBindingId="callback" visibleBindingValue="true">
+            <Field id="bounceFilter" type="checkbox" defaultValue="false"
+                   visibleBindingId="callback" visibleBindingValue="true">
                 <Label>Enable Contact Bounce Filter:</Label>
             </Field>
 
-            <Field id="bounceFilterLabel" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true" visibleBindingId="callback" visibleBindingValue="true">
+            <Field id="bounceFilterLabel" type="label" fontSize="small"
+                   fontColor="darkgray" alignWithControl="true"
+                   visibleBindingId="callback" visibleBindingValue="true">
                 <Label>The bounce filter rejects callback state changes that are separated by less than the bounce time.  It is used to eliminate multiple responses from bouncing mechanical switches/relays.</Label>
             </Field>
 
-            <Field id="bounceTime" type="textfield" defaultValue="100" visibleBindingId="bounceFilter" visibleBindingValue="true">
+            <Field id="bounceTime" type="textfield" defaultValue="100"
+                   visibleBindingId="bounceFilter" visibleBindingValue="true">
                 <Label>Bounce Time (µsec):</Label>
             </Field>
 
-            <Field id="bounceTimeLabel" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true" visibleBindingId="bounceFilter" visibleBindingValue="true">
+            <Field id="bounceTimeLabel" type="label" fontSize="small"
+                   fontColor="darkgray" alignWithControl="true"
+                   visibleBindingId="bounceFilter" visibleBindingValue="true">
                 <Label>The bounce time must be tuned to each switch/application.  If too low, bouncing states will be processed normally.  If too high, valid state changes could be rejected.</Label>
             </Field>
 
-            <Field id="logBounce" type="checkbox" defaultValue="false" visibleBindingId="bounceFilter" visibleBindingValue="true">
+            <Field id="logBounce" type="checkbox" defaultValue="false"
+                   visibleBindingId="bounceFilter" visibleBindingValue="true">
                 <Label>Log Bounce Filter Warnings:</Label>
             </Field>
 
 
             <!-- digitalInput relayInterrupts -->
-            <Field id="relayInterrupts" type="checkbox" defaultValue="false" visibleBindingId="callback" visibleBindingValue="true">
+            <Field id="relayInterrupts" type="checkbox" defaultValue="false"
+                   visibleBindingId="callback" visibleBindingValue="true">
                 <Label>Relay Hardware Interrupts:</Label>
             </Field>
 
-            <Field id="relayInterruptsLabel" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true" visibleBindingId="callback" visibleBindingValue="true">
+            <Field id="relayInterruptsLabel" type="label" fontSize="small"
+                   fontColor="darkgray" alignWithControl="true"
+                   visibleBindingId="callback" visibleBindingValue="true">
                 <Label>Indicates that this GPIO input is connected to hardware interrupt outputs from one or more interrupt devices.  A transition on this GPIO causes the callback method to relay the interrupt to all interrupt devices.</Label>
             </Field>
 
 
             <!-- digitalInput hardwareInterrupt -->
-            <Field id="hardwareInterrupt" type="checkbox" defaultValue="false" visibleBindingId="ioDevType" visibleBindingValue="(MCP23008, MCP23017, MCP23S08, MCP23S17)">
+            <Field id="hardwareInterrupt" type="checkbox" defaultValue="false"
+                   visibleBindingId="ioDevType"
+                   visibleBindingValue="(MCP23008, MCP23017, MCP23S08, MCP23S17)">
                 <Label>Enable Hardware Interrupt:</Label>
             </Field>
 
-            <Field id="hardwareInterruptLabel" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true" visibleBindingId="hardwareInterrupt" visibleBindingValue="true">
+            <Field id="hardwareInterruptLabel" type="label" fontSize="small"
+                   fontColor="darkgray" alignWithControl="true"
+                   visibleBindingId="hardwareInterrupt"
+                   visibleBindingValue="true">
                 <Label>Enabling hardware interrupt raises a hardware interrupt output on an input state change.  The interrupt output must be connected to a GPIO input that is configured for callback and interrupt relay.</Label>
             </Field>
 
-            <Field id="interruptRelayGPIO" type="menu" visibleBindingId="hardwareInterrupt" visibleBindingValue="true">
+            <Field id="interruptRelayGPIO" type="menu"
+                   visibleBindingId="hardwareInterrupt"
+                   visibleBindingValue="true">
                 <Label>Select Interrupt Relay GPIO:</Label>
-                <List class="self" method="getGPIORelayDevices" dynamicReload="yes"/>
+                <List class="self" method="getGPIORelayDevices"
+                      dynamicReload="yes"/>
             </Field>
 
 
@@ -833,25 +935,32 @@ v0.5.4   4/ 3/2022  Update the digitalInput relayInterrupts label field.
                 <Label>Enable Input Polling:</Label>
             </Field>
 
-            <Field id="pollingLabel" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true">
+            <Field id="pollingLabel" type="label" fontSize="small"
+                   fontColor="darkgray" alignWithControl="true">
                 <Label>Read the input at regular intervals and log the input state if it has changed.</Label>
             </Field>
 
-            <Field id="pollingInterval" type="textfield" defaultValue="0" visibleBindingId="polling" visibleBindingValue="true">
+            <Field id="pollingInterval" type="textfield" defaultValue="0"
+                   visibleBindingId="polling" visibleBindingValue="true">
                 <Label>Polling Interval (seconds):</Label>
             </Field>
 
-            <Field id="intervalLabel" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true" visibleBindingId="polling" visibleBindingValue="true">
+            <Field id="intervalLabel" type="label" fontSize="small"
+                   fontColor="darkgray" alignWithControl="true"
+                   visibleBindingId="polling" visibleBindingValue="true">
                 <Label>Setting the interval to 0.0 reads the input in each pass through the run loop.  The actual polling interval depends on the run loop time.</Label>
             </Field>
 
 
             <!-- digitalInput logAll -->
-            <Field id="logAll" type="checkbox" defaultValue="false" visibleBindingId="polling" visibleBindingValue="true">
+            <Field id="logAll" type="checkbox" defaultValue="false"
+                   visibleBindingId="polling" visibleBindingValue="true">
                 <Label>Log All Polling Results:</Label>
             </Field>
 
-            <Field id="logAllLabel" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true" visibleBindingId="polling" visibleBindingValue="true">
+            <Field id="logAllLabel" type="label" fontSize="small"
+                   fontColor="darkgray" alignWithControl="true"
+                   visibleBindingId="polling" visibleBindingValue="true">
                 <Label>Log the input state after each poll, regardless of change.  By default, only changed states are logged.</Label>
             </Field>
 
@@ -882,7 +991,8 @@ v0.5.4   4/ 3/2022  Update the digitalInput relayInterrupts label field.
 
 
              <!-- digitalOutput hostAddress -->
-            <Field id="hostAddress" type="textfield" defaultValue="raspi4b-io.local">
+            <Field id="hostAddress" type="textfield"
+                   defaultValue="raspi4b-io.local">
                 <Label>Host Address (FQDN or IPv4):</Label>
             </Field>
 
@@ -898,7 +1008,8 @@ v0.5.4   4/ 3/2022  Update the digitalInput relayInterrupts label field.
                 <Label>Host Id:</Label>
             </Field>
 
-            <Field id="hostIdLabel" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true">
+            <Field id="hostIdLabel" type="label" fontSize="small"
+                   fontColor="darkgray" alignWithControl="true">
                 <Label>The Host Id is a unique code used to identify the host in the indigo device address.  It may be user specified or left blank for automatic assignment. Automatically assigned id's are extracted from the host FQDN ("name-id.domainName"), or simply set to "pi".</Label>
             </Field>
 
@@ -919,6 +1030,7 @@ v0.5.4   4/ 3/2022  Update the digitalInput relayInterrupts label field.
                 <Label>I/O Device Type:</Label>
                 <List>
                     <Option value="pigpio">Built-in Raspberry Pi GPIO</Option>
+                    <Option value="dkrPiRly">I2C Docker Pi Relay</Option>
                     <Option value="MCP23008">MCP23008 I2C 8-Bit I/O Expander</Option>
                     <Option value="MCP23017">MCP23017 I2C 16-Bit I/O Expander</Option>
                     <Option value="MCP23S08">MCP23S08 SPI 8-Bit I/O Expander</Option>
@@ -928,9 +1040,11 @@ v0.5.4   4/ 3/2022  Update the digitalInput relayInterrupts label field.
 
 
              <!-- digitalOutput gpioNumber -->
-            <Field id="gpioNumber" type="menu" defaultValue="17" visibleBindingId="ioDevType" visibleBindingValue="pigpio">
+            <Field id="gpioNumber" type="menu" defaultValue="17"
+                   visibleBindingId="ioDevType" visibleBindingValue="pigpio">
                 <Label>BCM GPIO Number:</Label>
                 <List>
+                    <Option value="4">GPIO 4</Option>
                     <Option value="5">GPIO 5</Option>
                     <Option value="6">GPIO 6</Option>
                     <Option value="12">GPIO 12</Option>
@@ -951,8 +1065,23 @@ v0.5.4   4/ 3/2022  Update the digitalInput relayInterrupts label field.
             </Field>
 
 
-             <!-- digitalOutput i2cAddress -->
-            <Field id="i2cAddress" type="menu" defaultValue="0x20" visibleBindingId="ioDevType" visibleBindingValue="(MCP23008, MCP23017)">
+            <!-- digitalOutput i2cAddress -->
+            <Field id="i2cAddress" type="textfield"  hidden="true"> </Field>
+
+            <Field id="i2cAddress4" type="menu" defaultValue="0x10"
+                   visibleBindingId="ioDevType" visibleBindingValue="dkrPiRly">
+                <Label>I2C Address:</Label>
+                <List>
+                    <Option value="0x10">0x10</Option>
+                    <Option value="0x11">0x11</Option>
+                    <Option value="0x12">0x12</Option>
+                    <Option value="0x13">0x13</Option>
+                </List>
+            </Field>
+
+            <Field id="i2cAddress8" type="menu" defaultValue="0x00"
+                   visibleBindingId="ioDevType"
+                   visibleBindingValue="(MCP23008, MCP23017)">
                 <Label>I2C Address:</Label>
                 <List>
                     <Option value="0x20">0x20</Option>
@@ -967,8 +1096,22 @@ v0.5.4   4/ 3/2022  Update the digitalInput relayInterrupts label field.
             </Field>
 
 
-             <!-- digitalOutput spiChannel -->
-            <Field id="spiChannel" type="menu" defaultValue="0" visibleBindingId="ioDevType" visibleBindingValue="(MCP23S08, MCP23S17)">
+            <!--  digitalOutput relayNumber  -->
+            <Field id="relayNumber" type="menu" defaultValue="1"
+                   visibleBindingId="ioDevType" visibleBindingValue="dkrPiRly">
+                <Label>Relay Number:</Label>
+                <List>
+                    <Option value="1">Relay 1</Option>
+                    <Option value="2">Relay 2</Option>
+                    <Option value="3">Relay 3</Option>
+                    <Option value="4">Relay 4</Option>
+                </List>
+            </Field>
+
+
+            <!-- digitalOutput spiChannel -->
+            <Field id="spiChannel" type="menu" visibleBindingId="ioDevType"
+                   visibleBindingValue="(MCP23S08, MCP23S17)">
                 <Label>SPI Channel:</Label>
                 <List>
                     <Option value="0">Channel 0</Option>
@@ -978,9 +1121,10 @@ v0.5.4   4/ 3/2022  Update the digitalInput relayInterrupts label field.
 
 
             <!-- digitalOutput spiDevAddress -->
-            <Field id="spiDevAddress" type="textfield" defaultValue="0x20" hidden="true"> </Field>
+            <Field id="spiDevAddress" type="textfield" hidden="true"> </Field>
 
-            <Field id="spiDevAddress4" type="menu" defaultValue="0x20" visibleBindingId="ioDevType" visibleBindingValue="MCP23S08">
+            <Field id="spiDevAddress4" type="menu" defaultValue="0x20"
+                   visibleBindingId="ioDevType" visibleBindingValue="MCP23S08">
                 <Label>SPI Device Address:</Label>
                 <List>
                     <Option value="0x20">0x20</Option>
@@ -990,7 +1134,8 @@ v0.5.4   4/ 3/2022  Update the digitalInput relayInterrupts label field.
                 </List>
             </Field>
 
-            <Field id="spiDevAddress8" type="menu" defaultValue="0x20" visibleBindingId="ioDevType" visibleBindingValue="MCP23S17">
+            <Field id="spiDevAddress8" type="menu" defaultValue="0x20"
+                   visibleBindingId="ioDevType" visibleBindingValue="MCP23S17">
                 <Label>SPI Device Address:</Label>
                 <List>
                     <Option value="0x20">0x20</Option>
@@ -1006,7 +1151,9 @@ v0.5.4   4/ 3/2022  Update the digitalInput relayInterrupts label field.
 
 
             <!-- digitalOutput ioPort -->
-            <Field id="ioPort" type="menu" defaultValue="a" visibleBindingId="ioDevType" visibleBindingValue="(MCP23017, MCP23S17)">
+            <Field id="ioPort" type="menu" defaultValue="a"
+                   visibleBindingId="ioDevType"
+                   visibleBindingValue="(MCP23017, MCP23S17)">
                 <Label>16-Bit I/O Expander Port:</Label>
                 <List>
                     <Option value="a">Port A</Option>
@@ -1016,7 +1163,9 @@ v0.5.4   4/ 3/2022  Update the digitalInput relayInterrupts label field.
 
 
             <!-- digitalOutput bitNumber -->
-            <Field id="bitNumber" type="menu" defaultValue="0" visibleBindingId="ioDevType" visibleBindingValue="(MCP23008, MCP23017, MCP23S08, MCP23S17)">
+            <Field id="bitNumber" type="menu" defaultValue="0"
+                   visibleBindingId="ioDevType"
+                   visibleBindingValue="(MCP23008, MCP23017, MCP23S08, MCP23S17)">
                 <Label>I/O Port Bit Number:</Label>
                 <List>
                     <Option value="0">Bit 0</Option>
@@ -1047,39 +1196,49 @@ v0.5.4   4/ 3/2022  Update the digitalInput relayInterrupts label field.
                 <Label>Momentary Turn-on:</Label>
             </Field>
 
-            <Field id="turnOffDelay" type="textfield" defaultValue="0" visibleBindingId="momentary" visibleBindingValue="true">
+            <Field id="turnOffDelay" type="textfield" defaultValue="0"
+                   visibleBindingId="momentary" visibleBindingValue="true">
                 <Label>Turn-off Delay (0-10 seconds):</Label>
             </Field>
 
-            <Field id="delayLabel" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true" visibleBindingId="momentary" visibleBindingValue="true">
+            <Field id="delayLabel" type="label" fontSize="small"
+                   fontColor="darkgray" alignWithControl="true"
+                   visibleBindingId="momentary" visibleBindingValue="true">
                 <Label>A turn-off delay of 0 seconds results in an actual delay of about 0.25 seconds.</Label>
             </Field>
 
 
             <!-- digitalOutput pwm -->
-            <Field id="pwm" type="checkbox" defaultValue="false" visibleBindingId="ioDevType" visibleBindingValue="pigpio">
+            <Field id="pwm" type="checkbox" defaultValue="false"
+                   visibleBindingId="ioDevType" visibleBindingValue="pigpio">
                 <Label>Pulse Width Modulation (PWM):</Label>
             </Field>
 
-            <Field id="frequency" type="textfield" defaultValue="100" visibleBindingId="pwm" visibleBindingValue="true">
+            <Field id="frequency" type="textfield" defaultValue="100"
+                   visibleBindingId="pwm" visibleBindingValue="true">
                 <Label>PWM Frequency (1-8000 Hertz):</Label>
             </Field>
 
-            <Field id="frequencyLabel" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true" visibleBindingId="pwm" visibleBindingValue="true">
+            <Field id="frequencyLabel" type="label" fontSize="small"
+                   fontColor="darkgray" alignWithControl="true"
+                   visibleBindingId="pwm" visibleBindingValue="true">
                 <Label>The frequency actually used will be one of 16 discrete values that is closest to the frequency specified.  See the pigpio library documentation.</Label>
             </Field>
 
 
-            <Field id="dutyCycle" type="textfield" defaultValue="50" visibleBindingId="pwm" visibleBindingValue="true">
+            <Field id="dutyCycle" type="textfield" defaultValue="50"
+                   visibleBindingId="pwm" visibleBindingValue="true">
                 <Label>PWM Duty Cycle (0-100 percent):</Label>
             </Field>
 
             <!-- digitalOutput bitRate -->
-            <Field id="bitRate" type="textfield" defaultValue="2000" visibleBindingId="ioDevType" visibleBindingValue="(MCP23S08, MCP23S17)">
+            <Field id="bitRate" type="textfield" defaultValue="2000"
+                   visibleBindingId="ioDevType" visibleBindingValue="(MCP23S08, MCP23S17)">
                 <Label>SPI Bit Rate (100-10000 kb/s):</Label>
             </Field>
 
-            <Field id="bitRateLabel" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true">
+            <Field id="bitRateLabel" type="label" fontSize="small"
+                   fontColor="darkgray" alignWithControl="true">
                 <Label>SPI bus data transfer rate for this device.  The bit rate in kb/s is usually equal to the SPI clock rate in kHz.</Label>
             </Field>
 
@@ -1100,23 +1259,30 @@ v0.5.4   4/ 3/2022  Update the digitalInput relayInterrupts label field.
                 <Label>Enable Output Polling:</Label>
             </Field>
 
-            <Field id="pollingLabel" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true">
+            <Field id="pollingLabel" type="label" fontSize="small"
+                   fontColor="darkgray" alignWithControl="true">
                 <Label>Read the output at regular intervals and log the output state if it has changed.  With the log all option, output polling is useful to periodically record the output state regardless of change.</Label>
             </Field>
 
-            <Field id="pollingInterval" type="textfield" defaultValue="0" visibleBindingId="polling" visibleBindingValue="true">
+            <Field id="pollingInterval" type="textfield" defaultValue="0"
+                   visibleBindingId="polling" visibleBindingValue="true">
                 <Label>Polling Interval (seconds):</Label>
             </Field>
 
-            <Field id="intervalLabel" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true" visibleBindingId="polling" visibleBindingValue="true">
+            <Field id="intervalLabel" type="label" fontSize="small"
+                   fontColor="darkgray" alignWithControl="true"
+                   visibleBindingId="polling" visibleBindingValue="true">
                 <Label>Setting the interval to 0.0 reads the output in each pass through the run loop.  The actual polling interval depends on the run loop time.</Label>
             </Field>
 
 
             <!-- digitalOutput logAll -->
-            <Field id="logAll" type="checkbox" defaultValue="true" hidden="true"> </Field>
+            <Field id="logAll" type="checkbox" defaultValue="true"
+                   hidden="true"> </Field>
 
-            <Field id="logAllLabel" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true" visibleBindingId="polling" visibleBindingValue="true">
+            <Field id="logAllLabel" type="label" fontSize="small"
+                   fontColor="darkgray" alignWithControl="true"
+                   visibleBindingId="polling" visibleBindingValue="true">
                 <Label>Log the output state after each poll, regardless of change.  By default, only changed states are logged.</Label>
             </Field>
 

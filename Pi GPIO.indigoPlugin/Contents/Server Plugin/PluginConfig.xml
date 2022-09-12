@@ -43,27 +43,33 @@ v0.5.0  11/28/2021  Fully functional beta version with minimal documentation..
         </List>
     </Field>
 
-    <Field id="thread" type="label" alignWithControl="true" fontColor="darkgray" visibleBindingId="loggingLevel" visibleBindingValue="THREAD">
+    <Field id="thread" type="label" alignWithControl="true" fontColor="darkgray"
+           visibleBindingId="loggingLevel" visibleBindingValue="THREAD">
         <Label>Log Thread Debug Messages and Higher</Label>
     </Field>
 
-    <Field id="debug" type="label" alignWithControl="true" fontColor="darkgray" visibleBindingId="loggingLevel" visibleBindingValue="DEBUG">
+    <Field id="debug" type="label" alignWithControl="true" fontColor="darkgray"
+           visibleBindingId="loggingLevel" visibleBindingValue="DEBUG">
         <Label>Log Debug Messages and Higher</Label>
     </Field>
 
-    <Field id="info" type="label" alignWithControl="true" fontColor="darkgray" visibleBindingId="loggingLevel" visibleBindingValue="INFO">
+    <Field id="info" type="label" alignWithControl="true" fontColor="darkgray"
+           visibleBindingId="loggingLevel" visibleBindingValue="INFO">
         <Label>Log Info Messages and Higher</Label>
     </Field>
 
-    <Field id="warning" type="label" alignWithControl="true" fontColor="darkgray" visibleBindingId="loggingLevel" visibleBindingValue="WARNING">
+    <Field id="warning" type="label" alignWithControl="true" fontColor="darkgray"
+           visibleBindingId="loggingLevel" visibleBindingValue="WARNING">
         <Label>Log Warning Messages and Higher</Label>
     </Field>
 
-    <Field id="error" type="label" alignWithControl="true" fontColor="darkgray" visibleBindingId="loggingLevel" visibleBindingValue="ERROR">
+    <Field id="error" type="label" alignWithControl="true" fontColor="darkgray"
+           visibleBindingId="loggingLevel" visibleBindingValue="ERROR">
         <Label>Log Error and Critical Messages Only</Label>
     </Field>
 
-    <Field id="critical" type="label" alignWithControl="true" fontColor="darkgray" visibleBindingId="loggingLevel" visibleBindingValue="CRITICAL">
+    <Field id="critical" type="label" alignWithControl="true" fontColor="darkgray"
+           visibleBindingId="loggingLevel" visibleBindingValue="CRITICAL">
         <Label>Log Critical Messages Only</Label>
     </Field>
 
@@ -72,11 +78,13 @@ v0.5.0  11/28/2021  Fully functional beta version with minimal documentation..
         <Label>Monitor Polling Status:</Label>
     </Field>
 
-    <Field id="statusLabel" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true">
+    <Field id="statusLabel" type="label" fontSize="small" fontColor="darkgray"
+           alignWithControl="true">
         <Label>Compute and log the average polling interval and rate over the period of the status interval.</Label>
     </Field>
 
-    <Field id="statusInterval" type="textfield" defaultValue="10.0" visibleBindingId="monitorStatus" visibleBindingValue="true">
+    <Field id="statusInterval" type="textfield" defaultValue="10.0"
+           visibleBindingId="monitorStatus" visibleBindingValue="true">
         <Label>Status Monitoring Interval (minutes):</Label>
     </Field>
 
@@ -95,7 +103,8 @@ v0.5.0  11/28/2021  Fully functional beta version with minimal documentation..
         <Label>Run Loop Sleep Time (seconds):</Label>
     </Field>
 
-     <Field id="sleepLabel" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true">
+     <Field id="sleepLabel" type="label" fontSize="small" fontColor="darkgray"
+            alignWithControl="true">
         <Label>The run loop sleep time defines the minimum polling interval for all devices regardless of the individual polling interval settings.  Setting it too low, however, consumes significant computing resources.  The default value balances the minimum polling interval and computer utilization.</Label>
     </Field>
 
@@ -104,7 +113,8 @@ v0.5.0  11/28/2021  Fully functional beta version with minimal documentation..
         <Label>Check SPI Integrity:</Label>
     </Field>
 
-    <Field id="checkLabel" type="label" fontSize="small" fontColor="darkgray" alignWithControl="true">
+    <Field id="checkLabel" type="label" fontSize="small" fontColor="darkgray"
+           alignWithControl="true">
         <Label>Check SPI integrity by repeating each SPI device read.  Issue a warning if the the results of the consecutive reads differ.  If this occurs, it could be an indication that the SPI bit rate is too high for the device.</Label>
     </Field>
 

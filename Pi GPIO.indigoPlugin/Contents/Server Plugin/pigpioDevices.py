@@ -16,8 +16,8 @@ FUNCTION:  pigpioDevices.py provides classes to define and manage five
    USAGE:  pigpioDevices.py is included by the primary plugin class,
            Plugin.py.  Its methods are called as needed by Plugin.py methods.
   AUTHOR:  papamac
- VERSION:  0.5.7
-    DATE:  July 20, 2022
+ VERSION:  0.5.8
+    DATE:  September 11, 2022
 
 
 UNLICENSE:
@@ -101,6 +101,7 @@ v0.5.5   4/12/2022  Set option to limit triggers to be the default for all
 v0.5.6   5/ 2/2022  Fix a bug that erroneously disables the gpio bounce filter
                     when bounce filter warning messages are not selected.
 v0.5.7   7/20/2022  Update for Python 3.
+v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
 """
 ###############################################################################
 #                                                                             #
@@ -142,13 +143,18 @@ SPI = 1                     # Constant for an SPI interface.
 # Public dictionary of io device data.
 # IODEV_DATA[ioDevType] = (ioDevClass, ioDevInterface):
 
-IODEV_DATA = {'MCP23008': ('IOExpander', I2C), 'MCP23017': ('IOExpander', I2C),
-              'MCP23S08': ('IOExpander', SPI), 'MCP23S17': ('IOExpander', SPI),
-              'MCP3204':  ('ADC12',      SPI), 'MCP3208':  ('ADC12',      SPI),
-              'MCP3422':  ('ADC18',      I2C), 'MCP3423':  ('ADC18',      I2C),
-              'MCP3424':  ('ADC18',      I2C),
-              'MCP4821':  ('DAC12',      SPI), 'MCP4822':  ('DAC12',      SPI),
-              'pigpio':   ('PiGPIO',     None)}
+IODEV_DATA = {
+    'dkrPiRly': ('DockerPiRelay', I2C),
+    'MCP23008': ('IOExpander',    I2C),   'MCP23017': ('IOExpander',   I2C),
+    'MCP23S08': ('IOExpander',    SPI),   'MCP23S17': ('IOExpander',   SPI),
+    'MCP3202':  ('ADC12',         SPI),   'MCP3204':  ('ADC12',        SPI),
+    'MCP3208':  ('ADC12',         SPI),
+    'MCP3422':  ('ADC18',         I2C),   'MCP3423':  ('ADC18',        I2C),
+    'MCP3424':  ('ADC18',         I2C),
+    'MCP4801':  ('DAC12',         SPI),   'MCP4802':  ('DAC12',        SPI),
+    'MCP4811':  ('DAC12',         SPI),   'MCP4812':  ('DAC12',        SPI),
+    'MCP4821':  ('DAC12',         SPI),   'MCP4822':  ('DAC12',        SPI),
+    'pigpio':   ('PiGPIO',        None)}
 
 # Public dictionary of io device instance objects.
 # ioDevices[dev.id] = <ioDev instance object>:
@@ -739,6 +745,10 @@ class DAC12(PiGPIODevice):
 
         voltage = sensorValue / self._scale
         raw = int(voltage * 4096 / (self.VREF * self._gain))
+
+        # Needs update for 8 and 10 bit dacs.
+        # Needs warning message for value out of range.
+
         if 0 <= raw < 4096:
             data = (self._dacChan << 7 | (self._gain & 1) << 5
                     | 0x10 | raw >> 8, raw & 0xff)
@@ -765,133 +775,41 @@ class DAC12(PiGPIODevice):
 ###############################################################################
 #                                                                             #
 #                          MODULE pigpioDevices.py                            #
-#                                CLASS PiGPIO                                 #
+#                            CLASS DockerPiRelay                              #
 #                                                                             #
 ###############################################################################
 
-class PiGPIO(PiGPIODevice):
-    """
-    Include discussion of callback, interrupt relay, and debouncing.
-    """
-
-    # Class constant:
-
-    PUD = {'off': pigpio.PUD_OFF,  # GPIO pullup parameter definitions.
-           'up': pigpio.PUD_UP,
-           'down': pigpio.PUD_DOWN}
+class DockerPiRelay(PiGPIODevice):
 
     # Internal instance methods:
 
     def __init__(self, dev):
         PiGPIODevice.__init__(self, dev)
 
-        # Set internal instance attributes and configure gpio device.
-
-        self._gpioNum = int(dev.pluginProps['gpioNumber'])
-        self._callbackId = None
-
-        if dev.deviceTypeId == 'digitalInput':
-            self._pi.set_mode(self._gpioNum, pigpio.INPUT)
-            pullup = dev.pluginProps['pullup']
-            self._pi.set_pull_up_down(self._gpioNum, self.PUD[pullup])
-            if dev.pluginProps['callback']:
-                self._callbackId = self._pi.callback(self._gpioNum,
-                                                     pigpio.EITHER_EDGE,
-                                                     self._callback)
-                self._priorTic = self._pi.get_current_tick()
-                self._bounceFilter = dev.pluginProps['bounceFilter']
-                self._bounceTime = int(dev.pluginProps['bounceTime'])
-                self._logBounce = dev.pluginProps['logBounce']
-                self._relayInterrupts = dev.pluginProps['relayInterrupts']
-                if self._relayInterrupts:
-
-                    # Initialize public instance attribute to collect
-                    # interrupt device id's.  This list is populated by
-                    # the __init__ methods of devices whose hardware
-                    # interrupt output is connected to this GPIO input.
-
-                    self.interruptDevices = []
-
-        elif dev.deviceTypeId == 'digitalOutput':
-            self._pi.set_mode(self._gpioNum, pigpio.OUTPUT)
-            self._momentary = dev.pluginProps['momentary']
-            self._delay = float(dev.pluginProps['turnOffDelay'])
-            self._pwm = dev.pluginProps['pwm']
-            if self._pwm:
-                self._pi.set_PWM_range(self._gpioNum, 100)
-                freq = int(dev.pluginProps['frequency'])
-                self._pi.set_PWM_frequency(self._gpioNum, freq)
-                self._duty = int(dev.pluginProps['dutyCycle'])
-
-    def _callback(self, gpioNum, pinBit, tic):
-        LOG.debug('"%s" callback %s %s %s µs',
-                  self._dev.name, gpioNum, pinBit, tic)
-        if pinBit in (ON, OFF):
-            bit = pinBit ^ self._inv
-            dt = pigpio.tickDiff(self._priorTic, tic)
-            self._priorTic = tic
-
-            # Apply the contact bounce filter, if requested.
-
-            if self._bounceFilter:
-                if dt < self._bounceTime:  # State is bouncing.
-                    if self._logBounce:
-                        LOG.warning('"%s" %s µs bounce; update to %s ignored',
-                                    self._dev.name, dt, ON_OFF[bit])
-                    return  # Ignore the bounced state change.
-
-            logAll = True  # Default logging option for state update.
-
-            # Relay interrupts, if requested.
-
-            if self._relayInterrupts:
-                if bit:  # Interrupt initiated; process it and set watchdog.
-                    for devId in self.interruptDevices:
-                        ioDev = ioDevices.get(devId)
-                        if ioDev and ioDev.interrupt():  # ioDev interrupt.
-                            break  # Only one match allowed per interrupt.
-                    else:
-                        LOG.warning('"%s" no match in interrupt devices list',
-                                    self._dev.name)
-                    self._pi.set_watchdog(self._gpioNum, 200)  # Set watchdog.
-                else:  # Interrupt reset; log time and clear the watchdog.
-                    LOG.debug('"%s" interrupt time is %s ms',
-                              self._dev.name, dt / 1000)
-                    self._pi.set_watchdog(self._gpioNum, 0)
-
-                logAll = None  # Suppress logging for interrupt relay GPIO.
-
-            # Update the onOff state.
-
-            self._updateOnOffState(bit, logAll=logAll)
-
-        else:  # Interrupt reset timeout.
-            LOG.warning('"%s" interrupt reset timeout', self._dev.name)
-            for ioDev in self.interruptDevices:
-                ioDev.resetInterrupt()
-            self._pi.set_watchdog(self._gpioNum, 0)  # Clear the watchdog timer
+        self._relayNumber = int(dev.pluginProps['relayNumber'])
+        self._momentary = dev.pluginProps['momentary']
+        self._delay = float(dev.pluginProps['turnOffDelay'])
 
     def _read(self, logAll=True):
-        bit = self._pi.read(self._gpioNum) ^ self._inv
-        LOG.debug('"%s" read %s', self._dev.name, ON_OFF[bit])
-        self._updateOnOffState(bit, logAll=logAll)
-        return bit
+        LOG.info('"%s" is %s', self._dev.name, ON_OFF[self._bitValue])
 
     def _write(self, value):
-        bit = int(value)
+        bit = 99
+        try:
+            bit = int(value)
+        except ValueError:
+            pass
         if bit in (ON, OFF):
-            self._pi.write(self._gpioNum, bit)
+            self._pi.i2c_write_byte_data(self._handle, self._relayNumber, bit)
             LOG.debug('"%s" write %s', self._dev.name, ON_OFF[bit])
             self._updateOnOffState(bit)
             if bit:
-                if self._pwm:
-                    self._pi.set_PWM_dutycycle(self._gpioNum, self._duty)
                 if self._momentary:
                     sleep(self._delay)
                     self._write(OFF)
         else:
             LOG.warning('"%s" invalid output value %s; write ignored',
-                        self._dev.name, bit)
+                        self._dev.name, value)
 
 
 ###############################################################################
@@ -903,7 +821,6 @@ class PiGPIO(PiGPIODevice):
 
 class IOExpander(PiGPIODevice):
     """
-
     """
 
     # MCP23XXX register address constants:
@@ -1092,7 +1009,11 @@ class IOExpander(PiGPIODevice):
         return bit
 
     def _write(self, value):
-        bit = int(value)
+        bit = 99
+        try:
+            bit = int(value)
+        except ValueError:
+            pass
         if bit in (ON, OFF):
             self._updateRegister('GPIO', bit)
             self._updateOnOffState(bit)
@@ -1101,7 +1022,7 @@ class IOExpander(PiGPIODevice):
                 self._write(OFF)
         else:
             LOG.warning('"%s" invalid output value %s; write ignored',
-                        self._dev.name, bit)
+                        self._dev.name, value)
 
     # Public instance methods:
 
@@ -1141,3 +1062,139 @@ class IOExpander(PiGPIODevice):
             self._readRegister('GPIO')  # Read port register to clear int.
         except Exception as errorMessage:
             pigpioFatalError(self._dev, 'int', errorMessage)
+
+
+###############################################################################
+#                                                                             #
+#                          MODULE pigpioDevices.py                            #
+#                                CLASS PiGPIO                                 #
+#                                                                             #
+###############################################################################
+
+class PiGPIO(PiGPIODevice):
+    """
+    Include discussion of callback, interrupt relay, and debouncing.
+    """
+
+    # Class constant:
+
+    PUD = {'off': pigpio.PUD_OFF,  # GPIO pullup parameter definitions.
+           'up': pigpio.PUD_UP,
+           'down': pigpio.PUD_DOWN}
+
+    # Internal instance methods:
+
+    def __init__(self, dev):
+        PiGPIODevice.__init__(self, dev)
+
+        # Set internal instance attributes and configure gpio device.
+
+        self._gpioNum = int(dev.pluginProps['gpioNumber'])
+        self._callbackId = None
+
+        if dev.deviceTypeId == 'digitalInput':
+            self._pi.set_mode(self._gpioNum, pigpio.INPUT)
+            pullup = dev.pluginProps['pullup']
+            self._pi.set_pull_up_down(self._gpioNum, self.PUD[pullup])
+            if dev.pluginProps['callback']:
+                self._callbackId = self._pi.callback(self._gpioNum,
+                                                     pigpio.EITHER_EDGE,
+                                                     self._callback)
+                self._priorTic = self._pi.get_current_tick()
+                self._bounceFilter = dev.pluginProps['bounceFilter']
+                self._bounceTime = int(dev.pluginProps['bounceTime'])
+                self._logBounce = dev.pluginProps['logBounce']
+                self._relayInterrupts = dev.pluginProps['relayInterrupts']
+                if self._relayInterrupts:
+
+                    # Initialize public instance attribute to collect
+                    # interrupt device id's.  This list is populated by
+                    # the __init__ methods of devices whose hardware
+                    # interrupt output is connected to this GPIO input.
+
+                    self.interruptDevices = []
+
+        elif dev.deviceTypeId == 'digitalOutput':
+            self._pi.set_mode(self._gpioNum, pigpio.OUTPUT)
+            self._momentary = dev.pluginProps['momentary']
+            self._delay = float(dev.pluginProps['turnOffDelay'])
+            self._pwm = dev.pluginProps['pwm']
+            if self._pwm:
+                self._pi.set_PWM_range(self._gpioNum, 100)
+                freq = int(dev.pluginProps['frequency'])
+                self._pi.set_PWM_frequency(self._gpioNum, freq)
+                self._duty = int(dev.pluginProps['dutyCycle'])
+
+    def _callback(self, gpioNum, pinBit, tic):
+        LOG.debug('"%s" callback %s %s %s µs',
+                  self._dev.name, gpioNum, pinBit, tic)
+        if pinBit in (ON, OFF):
+            bit = pinBit ^ self._inv
+            dt = pigpio.tickDiff(self._priorTic, tic)
+            self._priorTic = tic
+
+            # Apply the contact bounce filter, if requested.
+
+            if self._bounceFilter:
+                if dt < self._bounceTime:  # State is bouncing.
+                    if self._logBounce:
+                        LOG.warning('"%s" %s µs bounce; update to %s ignored',
+                                    self._dev.name, dt, ON_OFF[bit])
+                    return  # Ignore the bounced state change.
+
+            logAll = True  # Default logging option for state update.
+
+            # Relay interrupts, if requested.
+
+            if self._relayInterrupts:
+                if bit:  # Interrupt initiated; process it and set watchdog.
+                    for devId in self.interruptDevices:
+                        ioDev = ioDevices.get(devId)
+                        if ioDev and ioDev.interrupt():  # ioDev interrupt.
+                            break  # Only one match allowed per interrupt.
+                    else:
+                        LOG.warning('"%s" no match in interrupt devices list',
+                                    self._dev.name)
+                    self._pi.set_watchdog(self._gpioNum, 200)  # Set watchdog.
+                else:  # Interrupt reset; log time and clear the watchdog.
+                    LOG.debug('"%s" interrupt time is %s ms',
+                              self._dev.name, dt / 1000)
+                    self._pi.set_watchdog(self._gpioNum, 0)
+
+                logAll = None  # Suppress logging for interrupt relay GPIO.
+
+            # Update the onOff state.
+
+            self._updateOnOffState(bit, logAll=logAll)
+
+        else:  # Interrupt reset timeout.
+            LOG.warning('"%s" interrupt reset timeout', self._dev.name)
+            for ioDev in self.interruptDevices:
+                ioDev.resetInterrupt()
+            self._pi.set_watchdog(self._gpioNum, 0)  # Clear the watchdog timer
+
+    def _read(self, logAll=True):
+        bit = self._pi.read(self._gpioNum) ^ self._inv
+        LOG.debug('"%s" read %s', self._dev.name, ON_OFF[bit])
+        self._updateOnOffState(bit, logAll=logAll)
+        return bit
+
+    def _write(self, value):
+        bit = 99
+        try:
+            bit = int(value)
+        except ValueError:
+            pass
+        if bit in (ON, OFF):
+            self._pi.write(self._gpioNum, bit)
+            LOG.debug('"%s" write %s', self._dev.name, ON_OFF[bit])
+            self._updateOnOffState(bit)
+            if bit:
+                if self._pwm:
+                    self._pi.set_PWM_dutycycle(self._gpioNum, self._duty)
+                if self._momentary:
+                    sleep(self._delay)
+                    self._write(OFF)
+        else:
+            LOG.warning('"%s" invalid output value %s; write ignored',
+                        self._dev.name, value)

@@ -14,9 +14,9 @@ connect to the Indigo plugin via wired or wireless ethernet. Each pi host runs
 a **_pigpio server_** daemon that performs the physical I/O and manages the
 interface to the plugin.
 
-Locally each pi has 27 built-in GPIO pins that are available for digital I/O
+Each pi has 40 header pins with 27 GPIO pins that are available for digital I/O
 or special functions, including Inter-Integrated Circuit (I2C) and Serial
-Peripheral Interface (SPI) buses. Excluding pins allocated to these special
+Peripheral Interface (SPI) buses. Excluding pins allocated to common special
 functions, there are 17 pins remaining for user Digital Input/Output (DIO). See
 [GPIO and the 40-pin Header](https://raspberrypi.com/documentation/computers/os.html#gpio-and-the-40-pin-header)
 for more details.

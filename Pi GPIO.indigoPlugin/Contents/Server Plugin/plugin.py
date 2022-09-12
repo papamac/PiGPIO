@@ -105,6 +105,7 @@ v0.5.2   1/19/2022  Use common IODEV_DATA dictionary to unambiguously identify
                     a device's interface type (I2C, SPI, or None)
 v0.5.3   3/28/2022  Improve validation for low and high analog limits.
 v0.5.7   7/20/2022  Update for Python 3.
+v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
 """
 ###############################################################################
 #                                                                             #
@@ -114,8 +115,8 @@ v0.5.7   7/20/2022  Update for Python 3.
 ###############################################################################
 
 __author__ = 'papamac'
-__version__ = '0.5.7'
-__date__ = '7/20/2022'
+__version__ = '0.6.0'
+__date__ = '8/28/2022'
 
 from logging import getLogger, NOTSET
 
@@ -464,7 +465,11 @@ class Plugin(indigo.PluginBase):
                 address += '.g' + valuesDict['gpioNumber']
             else:
                 if interface is pigpioDevices.I2C:  # i2c device.
-                    address += '.i' + valuesDict['i2cAddress'][2:]
+                    i2cAddress4 = valuesDict['i2cAddress4']
+                    i2cAddress8 = valuesDict['i2cAddress8']
+                    i2cAddress = max(i2cAddress4, i2cAddress8)
+                    valuesDict['i2cAddress'] = i2cAddress
+                    address += '.i' + i2cAddress[2:]
 
                 elif interface is pigpioDevices.SPI:  # spi device.
                     address += '.s' + valuesDict['spiChannel']
@@ -491,23 +496,27 @@ class Plugin(indigo.PluginBase):
                     address += '.d' + dacChannel
 
                 else:  # digitalInput or digitalOutput
-                    address += '.g'
-                    if '17' in ioDevType:
-                        address += valuesDict['ioPort']
-                    address += valuesDict['bitNumber']
+                    if ioDevType == 'dkrPiRly':  # Docker Pi Relay device.
+                        address += '.r' + valuesDict['relayNumber']
+                    else:
+                        address += '.g'
+                        if '17' in ioDevType:
+                            address += valuesDict['ioPort']
+                        address += valuesDict['bitNumber']
 
             # Check the device address for uniqueness.
 
-            addrProps = ('hostAddress', 'hostId',         'gpioNumber',
-                         'spiChannel',  'spiDevAddress4', 'spiDevAddress8',
-                         'i2cAddress',  'adcChannel2',    'adcChannel4'
-                         'adcChannel8', 'dacChannel2',    'ioPort',
-                         'bitNumber')
+            addrProps = ('hostAddress',  'hostId',          'gpioNumber',
+                         'i2cAddress4',  'i2cAddress8',
+                         'spiChannel',   'spiDevAddress4',  'spiDevAddress8',
+                         'adcChannel2',  'adcChannel4',     'adcChannel8',
+                         'dacChannel2',  'ioPort',          'bitNumber',
+                         'relayNumber')
 
             for dev in indigo.devices.iter('self'):
                 if dev.id != devId:
                     if dev.address == address:  # address is not unique.
-                        error = 'Device address %s not unique.'
+                        error = 'Device address %s not unique.' % address
                         for prop in addrProps:
                             if valuesDict.get(prop):
                                 errors[prop] = error
