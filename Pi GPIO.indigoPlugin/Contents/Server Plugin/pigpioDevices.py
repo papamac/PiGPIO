@@ -16,8 +16,8 @@ FUNCTION:  pigpioDevices.py provides classes to define and manage five
    USAGE:  pigpioDevices.py is included by the primary plugin class,
            Plugin.py.  Its methods are called as needed by Plugin.py methods.
   AUTHOR:  papamac
- VERSION:  0.5.8
-    DATE:  September 11, 2022
+ VERSION:  0.5.9
+    DATE:  October 12, 2022
 
 
 UNLICENSE:
@@ -102,6 +102,7 @@ v0.5.6   5/ 2/2022  Fix a bug that erroneously disables the gpio bounce filter
                     when bounce filter warning messages are not selected.
 v0.5.7   7/20/2022  Update for Python 3.
 v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
+v0.5.9  10/12/2022  Add glitch filter option for built-in GPIO inputs.
 """
 ###############################################################################
 #                                                                             #
@@ -111,8 +112,8 @@ v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
 ###############################################################################
 
 __author__ = 'papamac'
-__version__ = '0.5.7'
-__date__ = '7/20/2022'
+__version__ = '0.5.9'
+__date__ = '10/12/2022'
 
 from datetime import datetime
 from logging import getLogger
@@ -298,7 +299,7 @@ class PiGPIODevice:
         self._dev = dev
         self._callbackId = None
         self._interfaceId = None
-        self._poll = dev.pluginProps['polling']
+        self._polling = dev.pluginProps['polling']
         self._pollCount = 0
         self._lastPoll = self._lastStatus = indigo.server.getTime()
 
@@ -311,8 +312,8 @@ class PiGPIODevice:
 
         # Open a handle to access an i2c or spi device:
 
-        ioDevType = dev.pluginProps['ioDevType']
-        self._interface = IODEV_DATA[ioDevType][1]
+        self._ioDevType = dev.pluginProps['ioDevType']
+        self._interface = IODEV_DATA[self._ioDevType][1]
         if self._interface is not None:
             if self._interface is I2C:
                 i2cAddress = dev.pluginProps['i2cAddress']
@@ -540,7 +541,7 @@ class PiGPIODevice:
             pigpioFatalError(self._dev, 'write', errorMessage)
 
     def poll(self):
-        if self._poll:
+        if self._polling:
             now = indigo.server.getTime()
             secsSinceLast = (now - self._lastPoll).total_seconds()
             interval = float(self._dev.pluginProps['pollingInterval'])
@@ -596,10 +597,6 @@ class PiGPIODevice:
 
 class ADC12(PiGPIODevice):
 
-    # Class constant:
-
-    VREF = 4.096  # Internal reference voltage (volts).
-
     # Internal instance methods:
 
     def __init__(self, dev):
@@ -608,12 +605,15 @@ class ADC12(PiGPIODevice):
         inputConfig = int(dev.pluginProps['inputConfiguration'])
         self._data = (0x04 | inputConfig << 1 | self._adcChan >> 2,
                       self._adcChan << 6, 0)
+        if self._ioDevType == 'MCP3202':
+            self._data = (0x01, inputConfig << 7 | self._adcChan << 6, 0)
+        self._referenceVoltage = float(dev.pluginProps['referenceVoltage'])
 
     def _read(self, logAll=True):
 
         nBytes1, bytes1 = self._pi.spi_xfer(self._handle, self._data)
         raw1 = (bytes1[1] & 0x0f) << 8 | bytes1[2]
-        voltage1 = self.VREF * raw1 / 4096
+        voltage1 = self._referenceVoltage * raw1 / 4096
         LOG.debug('"%s" read %s | %s | %s | %s | %s',
                   self._dev.name, hexStr(self._data), nBytes1,
                   hexStr(bytes1), raw1, voltage1)
@@ -621,7 +621,7 @@ class ADC12(PiGPIODevice):
         if self.checkSPI:  # Check SPI integrity.
             nBytes2, bytes2 = self._pi.spi_xfer(self._handle, self._data)
             raw2 = (bytes2[1] & 0x0f) << 8 | bytes2[2]
-            voltage2 = self.VREF * raw2 / 4096
+            voltage2 = self._referenceVoltage * raw2 / 4096
             LOG.debug('"%s" read %s | %s | %s | %s | %s',
                       self._dev.name, hexStr(self._data), nBytes2,
                       hexStr(bytes2), raw2, voltage2)
@@ -746,15 +746,16 @@ class DAC12(PiGPIODevice):
         voltage = sensorValue / self._scale
         raw = int(voltage * 4096 / (self.VREF * self._gain))
 
-        # Needs update for 8 and 10 bit dacs.
-        # Needs warning message for value out of range.
-
         if 0 <= raw < 4096:
             data = (self._dacChan << 7 | (self._gain & 1) << 5
                     | 0x10 | raw >> 8, raw & 0xff)
             nBytes = self._pi.spi_write(self._handle, data)
             LOG.debug('"%s" xfer %s | %s | %s | %s',
                       self._dev.name, voltage, raw, hexStr(data), nBytes)
+        else:
+            LOG.warning('"%s" converted raw count %s is outside of DAC range; '
+                        'write ignored', self._dev.name, raw)
+            return
 
         # Update and log the sensorValue state.
 
@@ -1098,9 +1099,11 @@ class PiGPIO(PiGPIODevice):
             self._pi.set_pull_up_down(self._gpioNum, self.PUD[pullup])
             if dev.pluginProps['callback']:
                 self._callbackId = self._pi.callback(self._gpioNum,
-                                                     pigpio.EITHER_EDGE,
-                                                     self._callback)
+                                        pigpio.EITHER_EDGE, self._callback)
                 self._priorTic = self._pi.get_current_tick()
+                if dev.pluginProps['glitchFilter']:
+                    glitchTime = int(dev.pluginProps['glitchTime'])
+                    self._pi.set_glitch_filter(self._gpioNum, glitchTime)
                 self._bounceFilter = dev.pluginProps['bounceFilter']
                 self._bounceTime = int(dev.pluginProps['bounceTime'])
                 self._logBounce = dev.pluginProps['logBounce']

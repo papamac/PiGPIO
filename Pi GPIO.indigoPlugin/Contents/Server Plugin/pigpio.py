@@ -14,7 +14,7 @@ FUNCTION:  pigpio.py is a library of Python classes and methods that interfaces
    USAGE:  pigpio.py is included by the pigpioDevices module.  Its methods are
            called to perform low level GPIO operations to implement higher
            level Pi GPIO device functionality.
-  AUTHOR:  joan2837
+  AUTHOR:  joan2937
  VERSION:  v79
     DATE:  March 2, 2021
   SOURCE:  This module was copied from https://github.com/joan2937/pigpio

@@ -16,8 +16,8 @@ FUNCTION:  plugin.py defines the Plugin class, with standard methods that
    USAGE:  plugin.py is included in the Pi GPIO.indigoPlugin bundle and its
            methods are called by the Indigo server.
   AUTHOR:  papamac
- VERSION:  0.5.7
-    DATE:  July 20, 2022
+ VERSION:  0.5.8
+    DATE:  September 11, 2022
 
 
 UNLICENSE:
@@ -106,6 +106,7 @@ v0.5.2   1/19/2022  Use common IODEV_DATA dictionary to unambiguously identify
 v0.5.3   3/28/2022  Improve validation for low and high analog limits.
 v0.5.7   7/20/2022  Update for Python 3.
 v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
+v0.5.9  10/12/2022  Add glitch filter option for built-in GPIO inputs.
 """
 ###############################################################################
 #                                                                             #
@@ -465,9 +466,9 @@ class Plugin(indigo.PluginBase):
                 address += '.g' + valuesDict['gpioNumber']
             else:
                 if interface is pigpioDevices.I2C:  # i2c device.
-                    i2cAddress4 = valuesDict['i2cAddress4']
-                    i2cAddress8 = valuesDict['i2cAddress8']
-                    i2cAddress = max(i2cAddress4, i2cAddress8)
+                    i2cAddress = valuesDict['i2cAddress8']
+                    if ioDevType == 'dkrPiRly':
+                        i2cAddress = valuesDict['i2cAddress4']
                     valuesDict['i2cAddress'] = i2cAddress
                     address += '.i' + i2cAddress[2:]
 
@@ -489,9 +490,9 @@ class Plugin(indigo.PluginBase):
                     address += '.a' + adcChannel
 
                 elif typeId == 'analogOutput':
-                    dacChannel = valuesDict['dacChannel']
+                    dacChannel1 = valuesDict['dacChannel1']
                     dacChannel2 = valuesDict['dacChannel2']
-                    dacChannel = max(dacChannel, dacChannel2)
+                    dacChannel = max(dacChannel1, dacChannel2)
                     valuesDict['dacChannel'] = dacChannel
                     address += '.d' + dacChannel
 
@@ -506,9 +507,9 @@ class Plugin(indigo.PluginBase):
 
             # Check the device address for uniqueness.
 
-            addrProps = ('hostAddress',  'hostId',          'gpioNumber',
+            addrProps = ('hostAddress',  'hostId',           'gpioNumber',
                          'i2cAddress4',  'i2cAddress8',
-                         'spiChannel',   'spiDevAddress4',  'spiDevAddress8',
+                         'spiChannel2',  'spiDevAddress4',  'spiDevAddress8',
                          'adcChannel2',  'adcChannel4',     'adcChannel8',
                          'dacChannel2',  'ioPort',          'bitNumber',
                          'relayNumber')
@@ -523,6 +524,7 @@ class Plugin(indigo.PluginBase):
                         return False, valuesDict, errors
             else:
                 valuesDict['address'] = address  # address is unique.
+                LOG.debug(valuesDict)
                 return True, valuesDict
 
     ###########################################################################

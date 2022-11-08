@@ -12,7 +12,26 @@ FUNCTION:  Devices.xml defines Pi GPIO device objects, specifies ConfigUis, and
            contains the device properties from the xml.
   AUTHOR:  papamac
  VERSION:  0.6.0
-    DATE:  August 28, 2022
+    DATE:  October 12, 2022
+
+DESCRIPTION:
+
+This xml file contains ConfigUI descriptions for four devices: analogInput,
+analogOutput, digitalInput, and digitalOutput.  Within each ConfigUI there are
+the following groups of fields:
+
+1. Sensor Value (analogInput and analogOutput devices only)
+2. Raspberry Pi Host
+3. Device Selection
+4. Device Configuration
+5. Change Detection and Limit Checking (analogInput device only)
+6. Interrupt and Filter Options (digitalInput device only)
+7. Polling and Logging Options (analogInput and digitalInput devices only)
+8. Logging Options (analogOutput and digitalOutput devices only)
+
+Many of the field ids are repeated in the four device ConfigUIs.  For ease in
+locating the correct one, the fields are commented with the device type and
+field id.
 
 CHANGE LOG:
 
@@ -23,6 +42,11 @@ individual module docstrings if appropriate.
 v0.5.0  11/28/2021  Fully functional beta version with minimal documentation.
 v0.5.4    4/3/2022  Update the digitalInput relayInterrupts label field.
 v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
+v0.5.9  10/12/2022  Add glitch filter option for built-in GPIO inputs.  Add a
+                    "zz" prefix to all label, separator, and title id's so that
+                    they sort at the end of a valuesDict print.  Change polling
+                    options to logging options for analog and digital output
+                    devices.
 -->
 
 <Devices>
@@ -39,6 +63,12 @@ v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
         <Name>Analog Input</Name>
         <ConfigUI>
 
+
+            <!-- ##################### Sensor Value ####################### -->
+
+
+            <!-- analogInput SupportsSensorValue -->
+
             <Field id="SupportsSensorValue" type="checkbox" hidden="true"
                    defaultValue="true">
             </Field>
@@ -48,12 +78,14 @@ v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
 
 
             <!-- analogInput hostTitle -->
-            <Field id="hostTitle" type="label" alignText="center">
+
+            <Field id="zzHostTitle" type="label" alignText="center">
                 <Label>Select Raspberry Pi Host</Label>
             </Field>
 
 
             <!-- analogInput hostAddress -->
+
             <Field id="hostAddress" type="textfield"
                    defaultValue="raspi4b-io.local">
                 <Label>Host Address (FQDN or IPv4):</Label>
@@ -61,36 +93,40 @@ v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
 
 
             <!-- analogInput portNumber -->
+
             <Field id="portNumber" type="textfield" defaultValue="8888">
                 <Label>Port Number (1024-65535):</Label>
             </Field>
 
 
             <!-- analogInput hostId -->
+
             <Field id="hostId" type="textfield" defaultValue="">
                 <Label>Host Id:</Label>
             </Field>
 
-            <Field id="hostIdLabel" type="label" fontSize="small"
+            <Field id="zzHostIdLabel" type="label" fontSize="small"
                    fontColor="darkgray" alignWithControl="true">
                 <Label>The Host Id is a unique code used to identify the host in the indigo device address.  It may be user specified or left blank for automatic assignment. Automatically assigned id's are extracted from the host FQDN ("name-id.domainName"), or simply set to "pi".</Label>
             </Field>
 
 
-            <!-- ################## I/O Device Selection ################## -->
+            <!-- #################### Device Selection #################### -->
 
 
             <!-- analogInput selectionSeparator -->
-            <Field id="selectionSeparator" type="separator"> </Field>
 
-            <Field id="selectionTitle" type="label" alignText="center">
-                <Label>Select I/O Device</Label>
+            <Field id="zzSelectionSeparator" type="separator"> </Field>
+
+            <Field id="zzSelectionTitle" type="label" alignText="center">
+                <Label>Select ADC Device</Label>
             </Field>
 
 
             <!-- analogInput ioDevType -->
+
             <Field id="ioDevType" type="menu" defaultValue="MCP3208">
-                <Label>I/O Device Name:</Label>
+                <Label>ADC Device:</Label>
                 <List>
                     <Option value="MCP3202">MCP3202 SPI 2-Channel 12-Bit ADC</Option>
                     <Option value="MCP3204">MCP3204 SPI 4-Channel 12-Bit ADC</Option>
@@ -103,6 +139,7 @@ v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
 
 
             <!-- analogInput spiChannel -->
+
             <Field id="spiChannel" type="menu" defaultValue="0"
                    visibleBindingId="ioDevType"
                    visibleBindingValue="(MCP3202, MCP3204, MCP3208)">
@@ -115,7 +152,10 @@ v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
 
 
             <!-- analogInput i2cAddress -->
-            <Field id="i2cAddress" type="menu" defaultValue="0x68"
+
+            <Field id="i2cAddress" type="textfield"  hidden="true"> </Field>
+
+            <Field id="i2cAddress8" type="menu" defaultValue="0x68"
                    visibleBindingId="ioDevType"
                    visibleBindingValue="(MCP3423, MCP3424)">
                 <Label>I2C Address:</Label>
@@ -133,11 +173,12 @@ v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
 
 
             <!-- analogInput adcChannel -->
+
             <Field id="adcChannel" type="textfield" hidden="true"> </Field>
 
             <Field id="adcChannel2" type="menu" defaultValue="0"
                    visibleBindingId="ioDevType"
-                   visibleBindingValue="(MCO3202, MCP3422, MCP3423)">
+                   visibleBindingValue="(MCP3202, MCP3422, MCP3423)">
                 <Label>ADC Channel Number:</Label>
                 <List>
                     <Option value="0">Channel 0</Option>
@@ -174,18 +215,20 @@ v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
             </Field>
 
 
-            <!-- ################ I/O Device Configuration ################ -->
+            <!-- ################## Device Configuration ################## -->
 
 
             <!-- analogInput configSeparator -->
-            <Field id="configSeparator" type="separator"> </Field>
 
-            <Field id="configTitle" type="label" alignText="center">
+            <Field id="zzConfigSeparator" type="separator"> </Field>
+
+            <Field id="zzConfigTitle" type="label" alignText="center">
                 <Label>Configure ADC</Label>
             </Field>
 
 
             <!-- analogInput inputConfiguration -->
+
             <Field id="inputConfiguration" type="menu" defaultValue="1"
                    visibleBindingId="ioDevType"
                    visibleBindingValue="(MCP3202, MCP3204, MCP3208)">
@@ -197,7 +240,17 @@ v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
             </Field>
 
 
+            <!-- analogInput referenceVoltage -->
+
+            <Field id="referenceVoltage" type="textfield" defaultValue="3.3"
+                   visibleBindingId="ioDevType"
+                   visibleBindingValue="(MCP3202, MCP3204, MCP3208)">
+                <Label>Reference Voltage (V):</Label>
+            </Field>
+
+
             <!-- analogInput resolution -->
+
             <Field id="resolution" type="menu" defaultValue="12"
                    visibleBindingId="ioDevType"
                    visibleBindingValue="(MCP3422, MCP3423, MCP3424)">
@@ -212,6 +265,7 @@ v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
 
 
             <!-- analogInput gain -->
+
             <Field id="gain" type="menu" defaultValue="1"
                    visibleBindingId="ioDevType"
                    visibleBindingValue="(MCP3422, MCP3423, MCP3424)">
@@ -226,17 +280,19 @@ v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
 
 
             <!-- analogInput scaling -->
+
             <Field id="scaling" type="textfield" defaultValue="2.47058824">
                 <Label>Scaling Factor:</Label>
             </Field>
 
-            <Field id="scalingLabel" type="label" fontSize="small"
+            <Field id="zzScalingLabel" type="label" fontSize="small"
                    fontColor="darkgray" alignWithControl="true">
                 <Label>The Scaling Factor is used to calibrate an analog input device for a specific application.  It multiplies all values read from the ADC.  The default value is for voltage measurements using the AB Electronics ADC Pi board.</Label>
             </Field>
 
 
             <!-- analogInput units -->
+
             <Field id="units" type="menu" defaultValue=" ">
                 <Label>Sensor Value Units:</Label>
                 <List>
@@ -256,13 +312,14 @@ v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
             </Field>
 
             <!-- analogInput bitRate -->
+
             <Field id="bitRate" type="textfield" defaultValue="2000"
                    visibleBindingId="ioDevType"
                    visibleBindingValue="(MCP3204, MCP3208)">
                 <Label>SPI Bit Rate (100-10000 kb/s):</Label>
             </Field>
 
-            <Field id="bitRateLabel" type="label" fontSize="small"
+            <Field id="zzBitRateLabel" type="label" fontSize="small"
                    fontColor="darkgray" alignWithControl="true">
                 <Label>SPI bus data transfer rate for this device.  The bit rate in kb/s is usually equal to the SPI clock rate in kHz.</Label>
             </Field>
@@ -272,25 +329,28 @@ v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
 
 
             <!-- analogInput changeSeparator -->
-            <Field id="changeSeparator" type="separator"> </Field>
 
-            <Field id="changeTitle" type="label" alignText="center">
+            <Field id="zzChangeSeparator" type="separator"> </Field>
+
+            <Field id="zzChangeTitle" type="label" alignText="center">
                 <Label>Select Change Detection and Limit Checking Options</Label>
             </Field>
 
 
             <!-- analogInput changeThreshold -->
+
             <Field id="changeThreshold" type="textfield" defaultValue="1">
                 <Label>Change Threshold (percent):</Label>
             </Field>
 
-            <Field id="changeLabel" type="label" fontSize="small"
+            <Field id="zzChangeThresholdLabel" type="label" fontSize="small"
                    fontColor="darkgray" alignWithControl="true">
                 <Label>Log a sensor value update if the value changes by this percentage or greater.</Label>
             </Field>
 
 
             <!-- analogInput lowLimitCheck -->
+
             <Field id="lowLimitCheck" type="checkbox" defaultValue="false">
                 <Label>Low Limit Check:</Label>
             </Field>
@@ -300,7 +360,7 @@ v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
                 <Label>Low Limit:</Label>
             </Field>
 
-            <Field id="lowLimitLabel" type="label" fontSize="small"
+            <Field id="zzLowLimitLabel" type="label" fontSize="small"
                    fontColor="darkgray" alignWithControl="true"
                    visibleBindingId="lowLimitCheck" visibleBindingValue="true">
                 <Label>Log a low limit fault if the sensor value is less than the low limit.</Label>
@@ -308,6 +368,7 @@ v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
 
 
             <!-- analogInput highLimitCheck -->
+
             <Field id="highLimitCheck" type="checkbox" defaultValue="false">
                 <Label>High Limit Check:</Label>
             </Field>
@@ -318,7 +379,7 @@ v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
                 <Label>High Limit:</Label>
             </Field>
 
-            <Field id="highLimitLabel" type="label" fontSize="small"
+            <Field id="zzHighLimitLabel" type="label" fontSize="small"
                    fontColor="darkgray" alignWithControl="true"
                    visibleBindingId="highLimitCheck"
                    visibleBindingValue="true">
@@ -326,25 +387,27 @@ v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
             </Field>
 
 
-            <!-- #################### Polling Options ##################### -->
+            <!-- ############## Polling and Logging Options ############### -->
 
 
             <!-- analogInput pollingSeparator -->
-            <Field id="pollingSeparator" type="separator"> </Field>
 
-            <Field id="pollingTitle" type="label" alignText="center">
-                <Label>Select Polling Options</Label>
+            <Field id="zzPollingSeparator" type="separator"> </Field>
+
+            <Field id="zzPollingTitle" type="label" alignText="center">
+                <Label>Select Polling and Logging Options</Label>
             </Field>
 
 
             <!-- analogInput polling -->
+
             <Field id="polling" type="checkbox" defaultValue="false">
                 <Label>Enable Input Polling:</Label>
             </Field>
 
-            <Field id="pollingLabel" type="label" fontSize="small"
+            <Field id="zzPollingLabel" type="label" fontSize="small"
                    fontColor="darkgray" alignWithControl="true">
-                <Label>Read the input at regular intervals, perform change detection and limit checks, update the sensor value state, and log value as needed.</Label>
+                <Label>Read the sensor value at regular intervals, perform change detection and limit checks, update the value, and log it if changed.</Label>
             </Field>
 
             <Field id="pollingInterval" type="textfield" defaultValue="10"
@@ -352,23 +415,24 @@ v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
                 <Label>Polling Interval (seconds):</Label>
             </Field>
 
-            <Field id="intervalLabel" type="label" fontSize="small"
+            <Field id="zzPollingIntervalLabel" type="label" fontSize="small"
                    fontColor="darkgray" alignWithControl="true"
                    visibleBindingId="polling" visibleBindingValue="true">
-                <Label>Setting the interval to 0.0 reads the output in each pass through the run loop.  The actual polling interval depends on the run loop time.</Label>
+                <Label>Setting the interval to 0 reads the output in each pass through the run loop.  The actual polling interval depends on the run loop time.</Label>
             </Field>
 
 
             <!-- analogInput logAll -->
+
             <Field id="logAll" type="checkbox" defaultValue="false"
                    visibleBindingId="polling" visibleBindingValue="true">
                 <Label>Log All Polling Results:</Label>
             </Field>
 
-            <Field id="logAllLabel" type="label" fontSize="small"
+            <Field id="zzLogAllLabel" type="label" fontSize="small"
                    fontColor="darkgray" alignWithControl="true"
                    visibleBindingId="polling" visibleBindingValue="true">
-                <Label>Log the sensor value after each poll, regardless of the change.  By default, only changed values are logged.</Label>
+                <Label>Log the sensor value after each poll regardless of the change.  By default, only changed values are logged.</Label>
             </Field>
 
 
@@ -382,6 +446,7 @@ v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
 
 
             <!-- analogInput changeDetected -->
+
             <State id="changeDetected">
                 <ValueType boolType="TrueFalse">Boolean</ValueType>
                 <TriggerLabel>Sensor Value Change Detected</TriggerLabel>
@@ -390,6 +455,7 @@ v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
 
 
             <!-- analogInput lowFault -->
+
             <State id="lowFault">
                 <ValueType boolType="TrueFalse">Boolean</ValueType>
                 <TriggerLabel>Sensor Value Low Fault</TriggerLabel>
@@ -398,6 +464,7 @@ v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
 
 
             <!-- analogInput highFault -->
+
             <State id="highFault">
                 <ValueType boolType="TrueFalse">Boolean</ValueType>
                 <TriggerLabel>Sensor Value High Fault</TriggerLabel>
@@ -420,6 +487,12 @@ v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
         <Name>Analog Output</Name>
         <ConfigUI>
 
+
+            <!-- ##################### Sensor Value ####################### -->
+
+
+            <!-- analogOutput SupportsSensorValue -->
+
             <Field id="SupportsSensorValue" type="checkbox" hidden="true"
                    defaultValue="true">
             </Field>
@@ -429,12 +502,14 @@ v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
 
 
             <!-- analogOutput hostTitle -->
-            <Field id="hostTitle" type="label" alignText="center">
+
+            <Field id="zzHostTitle" type="label" alignText="center">
                 <Label>Select Raspberry Pi Host</Label>
             </Field>
 
 
             <!-- analogOutput hostAddress -->
+
             <Field id="hostAddress" type="textfield"
                    defaultValue="raspi4b-io.local">
                 <Label>Host Address (FQDN or IPv4):</Label>
@@ -442,41 +517,45 @@ v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
 
 
             <!-- analogOutput portNumber -->
+
             <Field id="portNumber" type="textfield" defaultValue="8888">
                 <Label>Port Number (1024-65535):</Label>
             </Field>
 
 
             <!-- analogOutput hostId -->
+
             <Field id="hostId" type="textfield" defaultValue="">
                 <Label>Host Id:</Label>
             </Field>
 
-            <Field id="hostIdLabel" type="label" fontSize="small"
+            <Field id="zzHostIdLabel" type="label" fontSize="small"
                    fontColor="darkgray" alignWithControl="true">
                 <Label>The Host Id is a unique code used to identify the host in the indigo device address.  It may be user specified or left blank for automatic assignment. Automatically assigned id's are extracted from the host FQDN ("name-id.domainName"), or simply set to "pi".</Label>
             </Field>
 
 
-            <!-- ################## I/O Device Selection ################## -->
+            <!-- #################### Device Selection #################### -->
 
 
             <!-- analogOutput selectionSeparator -->
-            <Field id="selectionSeparator" type="separator"> </Field>
 
-            <Field id="selectionTitle" type="label" alignText="center">
-                <Label>Select I/O Device</Label>
+            <Field id="zzSelectionSeparator" type="separator"> </Field>
+
+            <Field id="zzSelectionTitle" type="label" alignText="center">
+                <Label>Select DAC Device</Label>
             </Field>
 
 
             <!-- analogOutput ioDevType -->
+
             <Field id="ioDevType" type="menu" defaultValue="MCP4822">
-                <Label>I/O Device Name:</Label>
+                <Label>DAC Device:</Label>
                 <List>
-                    <Option value="MCP4801">MCP4821 SPI Single Channel 8-Bit DAC</Option>
-                    <Option value="MCP4802">MCP4821 SPI Dual Channel 8-Bit DAC</Option>
-                    <Option value="MCP4811">MCP4821 SPI Single Channel 10-Bit DAC</Option>
-                    <Option value="MCP4812">MCP4821 SPI Dual Channel 10-Bit DAC</Option>
+                    <Option value="MCP4801">MCP4801 SPI Single Channel 8-Bit DAC</Option>
+                    <Option value="MCP4802">MCP4802 SPI Dual Channel 8-Bit DAC</Option>
+                    <Option value="MCP4811">MCP4811 SPI Single Channel 10-Bit DAC</Option>
+                    <Option value="MCP4812">MCP4812 SPI Dual Channel 10-Bit DAC</Option>
                     <Option value="MCP4821">MCP4821 SPI Single Channel 12-Bit DAC</Option>
                     <Option value="MCP4822">MCP4822 SPI Dual Channel 12-Bit DAC</Option>
                 </List>
@@ -484,6 +563,7 @@ v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
 
 
             <!-- analogOutput spiChannel -->
+
             <Field id="spiChannel" type="menu" defaultValue="0">
                 <Label>SPI Channel:</Label>
                 <List>
@@ -494,8 +574,13 @@ v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
 
 
              <!-- analogOutput dacChannel -->
-            <Field id="dacChannel" type="textfield" defaultValue="0"
-                   hidden="true"> </Field>
+
+            <Field id="dacChannel" type="textfield" hidden="true"> </Field>
+
+            <Field id="dacChannel1" type="textfield" defaultValue="0"
+                   hidden="true"
+                   visibleBindingId="ioDevType" visibleBindingValue="(MCP4801, MCP4811, MCP4821)">
+            </Field>
 
             <Field id="dacChannel2" type="menu" defaultValue="0"
                    visibleBindingId="ioDevType" visibleBindingValue="(MCP4802, MCP4812, MCP4822)">
@@ -507,18 +592,20 @@ v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
             </Field>
 
 
-            <!-- ################ I/O Device Configuration ################ -->
+            <!-- ################## Device Configuration ################## -->
 
 
             <!-- analogOutput configSeparator -->
-            <Field id="configSeparator" type="separator"> </Field>
 
-            <Field id="configTitle" type="label" alignText="center">
+            <Field id="zzConfigSeparator" type="separator"> </Field>
+
+            <Field id="zzConfigTitle" type="label" alignText="center">
                 <Label>Configure DAC</Label>
             </Field>
 
 
             <!-- analogOutput gain -->
+
             <Field id="gain" type="menu" defaultValue="1">
                 <Label>Gain:</Label>
                 <List>
@@ -529,17 +616,19 @@ v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
 
 
             <!-- analogOutput scaling -->
+
             <Field id="scaling" type="textfield" defaultValue="1">
                 <Label>Scaling Factor:</Label>
             </Field>
 
-            <Field id="scalingLabel" type="label" fontSize="small"
+            <Field id="zzScalingLabel" type="label" fontSize="small"
                    fontColor="darkgray" alignWithControl="true">
                 <Label>The Scaling Factor is used to calibrate an analog output device for a specific application.  It divides all values written to the DAC.</Label>
             </Field>
 
 
             <!-- analogOutput units -->
+
             <Field id="units" type="menu" defaultValue=" ">
                 <Label>Sensor Value Units:</Label>
                 <List>
@@ -559,21 +648,55 @@ v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
             </Field>
 
             <!-- analogOutput bitRate -->
+
             <Field id="bitRate" type="textfield" defaultValue="2000">
                 <Label>SPI Bit Rate (100-10000 kb/s):</Label>
             </Field>
 
-            <Field id="bitRateLabel" type="label" fontSize="small"
+            <Field id="zzBitRateLabel" type="label" fontSize="small"
                    fontColor="darkgray" alignWithControl="true">
                 <Label>SPI bus data transfer rate for this device.  The bit rate in kb/s is usually equal to the SPI clock rate in kHz.</Label>
             </Field>
 
 
-            <!-- ######################## Polling ######################### -->
+            <!-- #################### Logging Options ##################### -->
+
+
+            <!-- analogOutput loggingSeparator -->
+
+            <Field id="zzLoggingSeparator" type="separator"> </Field>
+
+            <Field id="zzLoggingTitle" type="label" alignText="center">
+                <Label>Select Logging Options</Label>
+            </Field>
 
 
             <!-- analogOutput polling -->
-            <Field id="polling" type="checkbox" defaultValue="false"
+
+            <Field id="polling" type="checkbox" defaultValue="false">
+                <Label>Enable Output Logging:</Label>
+            </Field>
+
+            <Field id="zzPollingLabel" type="label" fontSize="small"
+                   fontColor="darkgray" alignWithControl="true">
+                <Label>Log the output value at regular intervals.</Label>
+            </Field>
+
+            <Field id="pollingInterval" type="textfield" defaultValue="10"
+                   visibleBindingId="polling" visibleBindingValue="true">
+                <Label>Logging Interval (seconds):</Label>
+            </Field>
+
+            <Field id="zzPollingIntervalLabel" type="label" fontSize="small"
+                   fontColor="darkgray" alignWithControl="true"
+                   visibleBindingId="polling" visibleBindingValue="true">
+                <Label>Setting the interval to 0 logs the output in each pass through the run loop.  The actual logging interval depends on the run loop time.</Label>
+            </Field>
+
+
+            <!-- analogOutput logAll -->
+
+            <Field id="logAll" type="checkbox" defaultValue="true"
                    hidden="true"> </Field>
 
 
@@ -597,12 +720,14 @@ v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
 
 
             <!-- digitalInput hostTitle-->
-            <Field id="hostTitle" type="label" alignText="center">
+
+            <Field id="zzHostTitle" type="label" alignText="center">
                 <Label>Select Raspberry Pi Host</Label>
             </Field>
 
 
             <!-- digitalInput hostAddress -->
+
             <Field id="hostAddress" type="textfield"
                    defaultValue="raspi4b-io.local">
                 <Label>Host Address (FQDN or IPv4):</Label>
@@ -610,36 +735,40 @@ v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
 
 
             <!-- digitalInput portNumber -->
+
             <Field id="portNumber" type="textfield" defaultValue="8888">
                 <Label>Port Number (1024-65535):</Label>
             </Field>
 
 
             <!-- digitalInput hostId -->
+
             <Field id="hostId" type="textfield" defaultValue="">
                 <Label>Host Id:</Label>
             </Field>
 
-            <Field id="hostIdLabel" type="label" fontSize="small"
+            <Field id="zzHostIdLabel" type="label" fontSize="small"
                    fontColor="darkgray" alignWithControl="true">
                 <Label>The Host Id is a unique code used to identify the host in the indigo device address.  It may be user specified or left blank for automatic assignment. Automatically assigned id's are extracted from the host FQDN ("name-id.domainName"), or simply set to "pi".</Label>
             </Field>
 
 
-            <!-- ################## I/O Device Selection ################## -->
+            <!-- #################### Device Selection #################### -->
 
 
             <!-- digitalInput selectionSeparator -->
-            <Field id="selectionSeparator" type="separator"> </Field>
 
-            <Field id="selectionTitle" type="label" alignText="center">
-                <Label>Select I/O Device</Label>
+            <Field id="zzSelectionSeparator" type="separator"> </Field>
+
+            <Field id="zzSelectionTitle" type="label" alignText="center">
+                <Label>Select Digital Input Device</Label>
             </Field>
 
 
             <!-- digitalInput ioDevType -->
+
             <Field id="ioDevType" type="menu" defaultValue="pigpio">
-                <Label>I/O Device Type:</Label>
+                <Label>Digital Input Device:</Label>
                 <List>
                     <Option value="pigpio">Built-in Raspberry Pi GPIO</Option>
                     <Option value="MCP23008">MCP23008 I2C 8-Bit I/O Expander</Option>
@@ -651,6 +780,7 @@ v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
 
 
             <!-- digitalInput gpioNumber -->
+
             <Field id="gpioNumber" type="menu" defaultValue="17"
                    visibleBindingId="ioDevType" visibleBindingValue="pigpio">
                 <Label>BCM GPIO Number:</Label>
@@ -677,7 +807,10 @@ v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
 
 
             <!-- digitalInput i2cAddress -->
-            <Field id="i2cAddress" type="menu" defaultValue="0x20"
+
+            <Field id="i2cAddress" type="textfield"  hidden="true"> </Field>
+
+            <Field id="i2cAddress8" type="menu" defaultValue="0x20"
                    visibleBindingId="ioDevType"
                    visibleBindingValue="(MCP23008, MCP23017)">
                 <Label>I2C Address:</Label>
@@ -695,6 +828,7 @@ v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
 
 
             <!-- digitalInput spiChannel -->
+
             <Field id="spiChannel" type="menu" defaultValue="0"
                    visibleBindingId="ioDevType"
                    visibleBindingValue="(MCP23S08, MCP23S17)">
@@ -707,6 +841,7 @@ v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
 
 
             <!-- digitalInput spiDeviceAddress -->
+
             <Field id="spiDevAddress" type="textfield" defaultValue="0x20"
                    hidden="true"> </Field>
 
@@ -738,6 +873,7 @@ v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
 
 
             <!-- digitalInput ioPort -->
+
             <Field id="ioPort" type="menu" defaultValue="a"
                    visibleBindingId="ioDevType"
                    visibleBindingValue="(MCP23017, MCP23S17)">
@@ -750,6 +886,7 @@ v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
 
 
             <!-- digitalInput bitNumber -->
+
             <Field id="bitNumber" type="menu" defaultValue="0"
                    visibleBindingId="ioDevType"
                    visibleBindingValue="(MCP23008, MCP23017, MCP23S08, MCP23S17)">
@@ -767,29 +904,32 @@ v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
             </Field>
 
 
-            <!-- ############### Input Device Configuration ############### -->
+            <!-- ################## Device Configuration ################## -->
 
 
              <!-- digitalInput configSeparator -->
-            <Field id="configSeparator" type="separator"> </Field>
 
-            <Field id="configTitle" type="label" alignText="center">
-                <Label>Configure Input Device</Label>
+            <Field id="zzConfigSeparator" type="separator"> </Field>
+
+            <Field id="zzConfigTitle" type="label" alignText="center">
+                <Label>Configure Digital Input</Label>
             </Field>
 
 
             <!-- digitalInput invert -->
+
             <Field id="invert" type="checkbox" defaultValue="false">
                 <Label>Invert on/off State:</Label>
             </Field>
 
-            <Field id="invertLabel" type="label" fontSize="small"
+            <Field id="zzInvertLabel" type="label" fontSize="small"
                    fontColor="darkgray" alignWithControl="true">
                 <Label>If checked, the on/off state is set to on for logic low and to off for logic high.</Label>
             </Field>
 
 
             <!-- digitalInput pullup -->
+
             <Field id="pullup" type="textfield" defaultValue="off"
                    hidden="true"> </Field>
 
@@ -803,7 +943,7 @@ v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
                 </List>
             </Field>
 
-            <Field id="pullup1Label" type="label" fontSize="small"
+            <Field id="zzPullup1Label" type="label" fontSize="small"
                    fontColor="darkgray" alignWithControl="true"
                    visibleBindingId="ioDevType" visibleBindingValue="pigpio">
                 <Label>Open applies no bias to the digital input. Pull up or down biases the input to logic high or low through an internal resistor.</Label>
@@ -819,7 +959,7 @@ v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
                 </List>
             </Field>
 
-            <Field id="pullup2Label" type="label" fontSize="small"
+            <Field id="zzPullup2Label" type="label" fontSize="small"
                    fontColor="darkgray" alignWithControl="true"
                    visibleBindingId="ioDevType"
                    visibleBindingValue="(MCP23008, MCP23017, MCP23S08, MCP23S17)">
@@ -827,13 +967,14 @@ v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
             </Field>
 
             <!-- digitalInput bitRate -->
+
             <Field id="bitRate" type="textfield" defaultValue="2000"
                    visibleBindingId="ioDevType"
                    visibleBindingValue="(MCP23S08, MCP23S17)">
                 <Label>SPI Bit Rate (100-10000 kb/s):</Label>
             </Field>
 
-            <Field id="bitRateLabel" type="label" fontSize="small"
+            <Field id="zzBitRateLabel" type="label" fontSize="small"
                    fontColor="darkgray" alignWithControl="true"
                    visibleBindingId="ioDevType"
                    visibleBindingValue="(MCP23S08, MCP23S17)">
@@ -841,37 +982,65 @@ v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
             </Field>
 
 
-            <!-- ############# Interrupt and Polling Options ############## -->
+            <!-- ############# Interrupt and Filter Options ############## -->
 
 
              <!-- digitalInput interruptSeparator -->
-            <Field id="interruptSeparator" type="separator"> </Field>
 
-            <Field id="interruptTitle" type="label" alignText="center">
-                <Label>Select Interrupt and Polling Options</Label>
+            <Field id="zzInterruptSeparator" type="separator"> </Field>
+
+            <Field id="zzInterruptTitle" type="label" alignText="center">
+                <Label>Select Interrupt and Filter Options</Label>
             </Field>
 
 
             <!-- digitalInput callback -->
+
             <Field id="callback" type="checkbox" defaultValue="false"
                    visibleBindingId="ioDevType" visibleBindingValue="pigpio">
                 <Label>Use GPIO Callback:</Label>
             </Field>
 
-            <Field id="callbackLabel" type="label" fontSize="small"
+            <Field id="zzCallbackLabel" type="label" fontSize="small"
                    fontColor="darkgray" alignWithControl="true"
                    visibleBindingId="ioDevType" visibleBindingValue="pigpio">
                 <Label>The GPIO callback updates/logs the device state on an input state change.  It eliminates the need for polling to detect changes.  It also enables interrupt relay and debounce filtering if requested.</Label>
             </Field>
 
 
+            <!-- digitalInput glitchFilter -->
+
+            <Field id="glitchFilter" type="checkbox" defaultValue="false"
+                   visibleBindingId="callback" visibleBindingValue="true">
+                <Label>Enable Glitch Filter:</Label>
+            </Field>
+
+            <Field id="zzGlitchFilterLabel" type="label" fontSize="small"
+                   fontColor="darkgray" alignWithControl="true"
+                   visibleBindingId="callback" visibleBindingValue="true">
+                <Label>The glitch filter rejects callback state changes that are not stable for longer than the glitch time.  The callback is delayed by the glitch time.</Label>
+            </Field>
+
+            <Field id="glitchTime" type="textfield" defaultValue="10"
+                   visibleBindingId="glitchFilter" visibleBindingValue="true">
+                <Label>Glitch Time (µsec):</Label>
+            </Field>
+
+            <Field id="zzGlitchTimeLabel" type="label" fontSize="small"
+                   fontColor="darkgray" alignWithControl="true"
+                   visibleBindingId="glitchFilter" visibleBindingValue="true">
+                <Label>The glitch time should be as short as possible, but long enough to eliminate short, spurious glitches.</Label>
+            </Field>
+
+
             <!-- digitalInput bounceFilter -->
+
             <Field id="bounceFilter" type="checkbox" defaultValue="false"
                    visibleBindingId="callback" visibleBindingValue="true">
                 <Label>Enable Contact Bounce Filter:</Label>
             </Field>
 
-            <Field id="bounceFilterLabel" type="label" fontSize="small"
+            <Field id="zzBounceFilterLabel" type="label" fontSize="small"
                    fontColor="darkgray" alignWithControl="true"
                    visibleBindingId="callback" visibleBindingValue="true">
                 <Label>The bounce filter rejects callback state changes that are separated by less than the bounce time.  It is used to eliminate multiple responses from bouncing mechanical switches/relays.</Label>
@@ -882,7 +1051,7 @@ v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
                 <Label>Bounce Time (µsec):</Label>
             </Field>
 
-            <Field id="bounceTimeLabel" type="label" fontSize="small"
+            <Field id="zzBounceTimeLabel" type="label" fontSize="small"
                    fontColor="darkgray" alignWithControl="true"
                    visibleBindingId="bounceFilter" visibleBindingValue="true">
                 <Label>The bounce time must be tuned to each switch/application.  If too low, bouncing states will be processed normally.  If too high, valid state changes could be rejected.</Label>
@@ -895,12 +1064,13 @@ v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
 
 
             <!-- digitalInput relayInterrupts -->
+
             <Field id="relayInterrupts" type="checkbox" defaultValue="false"
                    visibleBindingId="callback" visibleBindingValue="true">
                 <Label>Relay Hardware Interrupts:</Label>
             </Field>
 
-            <Field id="relayInterruptsLabel" type="label" fontSize="small"
+            <Field id="zzRelayInterruptsLabel" type="label" fontSize="small"
                    fontColor="darkgray" alignWithControl="true"
                    visibleBindingId="callback" visibleBindingValue="true">
                 <Label>Indicates that this GPIO input is connected to hardware interrupt outputs from one or more interrupt devices.  A transition on this GPIO causes the callback method to relay the interrupt to all interrupt devices.</Label>
@@ -908,13 +1078,14 @@ v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
 
 
             <!-- digitalInput hardwareInterrupt -->
+
             <Field id="hardwareInterrupt" type="checkbox" defaultValue="false"
                    visibleBindingId="ioDevType"
                    visibleBindingValue="(MCP23008, MCP23017, MCP23S08, MCP23S17)">
                 <Label>Enable Hardware Interrupt:</Label>
             </Field>
 
-            <Field id="hardwareInterruptLabel" type="label" fontSize="small"
+            <Field id="zzHardwareInterruptLabel" type="label" fontSize="small"
                    fontColor="darkgray" alignWithControl="true"
                    visibleBindingId="hardwareInterrupt"
                    visibleBindingValue="true">
@@ -930,14 +1101,27 @@ v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
             </Field>
 
 
+            <!-- ############## Polling and Logging Options ############### -->
+
+
+            <!-- digitalInput pollingSeparator -->
+
+            <Field id="zzPollingSeparator" type="separator"> </Field>
+
+            <Field id="zzPollingTitle" type="label" alignText="center">
+                <Label>Select Polling and Logging Options</Label>
+            </Field>
+
+
             <!-- digitalInput polling -->
+
             <Field id="polling" type="checkbox" defaultValue="false">
                 <Label>Enable Input Polling:</Label>
             </Field>
 
-            <Field id="pollingLabel" type="label" fontSize="small"
+            <Field id="zzPollingLabel" type="label" fontSize="small"
                    fontColor="darkgray" alignWithControl="true">
-                <Label>Read the input at regular intervals and log the input state if it has changed.</Label>
+                <Label>Read the input state at regular intervals and logs it if it has changed.</Label>
             </Field>
 
             <Field id="pollingInterval" type="textfield" defaultValue="0"
@@ -945,23 +1129,24 @@ v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
                 <Label>Polling Interval (seconds):</Label>
             </Field>
 
-            <Field id="intervalLabel" type="label" fontSize="small"
+            <Field id="zzPollingIntervalLabel" type="label" fontSize="small"
                    fontColor="darkgray" alignWithControl="true"
                    visibleBindingId="polling" visibleBindingValue="true">
-                <Label>Setting the interval to 0.0 reads the input in each pass through the run loop.  The actual polling interval depends on the run loop time.</Label>
+                <Label>Setting the interval to 0 reads the input state in each pass through the run loop.  The actual polling interval depends on the run loop time.</Label>
             </Field>
 
 
             <!-- digitalInput logAll -->
+
             <Field id="logAll" type="checkbox" defaultValue="false"
                    visibleBindingId="polling" visibleBindingValue="true">
                 <Label>Log All Polling Results:</Label>
             </Field>
 
-            <Field id="logAllLabel" type="label" fontSize="small"
+            <Field id="zzLogAllLabel" type="label" fontSize="small"
                    fontColor="darkgray" alignWithControl="true"
                    visibleBindingId="polling" visibleBindingValue="true">
-                <Label>Log the input state after each poll, regardless of change.  By default, only changed states are logged.</Label>
+                <Label>Log the input state after each poll regardless of change.  By default, only changed states are logged.</Label>
             </Field>
 
 
@@ -985,12 +1170,14 @@ v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
 
 
             <!-- digitalOutput hostTitle -->
-            <Field id="hostTitle" type="label" alignText="center">
+
+            <Field id="zzHostTitle" type="label" alignText="center">
                 <Label>Select Raspberry Pi Host</Label>
             </Field>
 
 
              <!-- digitalOutput hostAddress -->
+
             <Field id="hostAddress" type="textfield"
                    defaultValue="raspi4b-io.local">
                 <Label>Host Address (FQDN or IPv4):</Label>
@@ -998,36 +1185,40 @@ v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
 
 
             <!-- digitalOutput portNumber -->
+
             <Field id="portNumber" type="textfield" defaultValue="8888">
                 <Label>Port Number (1024-65535):</Label>
             </Field>
 
 
              <!-- digitalOutput hostId -->
+
             <Field id="hostId" type="textfield" defaultValue="">
                 <Label>Host Id:</Label>
             </Field>
 
-            <Field id="hostIdLabel" type="label" fontSize="small"
+            <Field id="zzHostIdLabel" type="label" fontSize="small"
                    fontColor="darkgray" alignWithControl="true">
                 <Label>The Host Id is a unique code used to identify the host in the indigo device address.  It may be user specified or left blank for automatic assignment. Automatically assigned id's are extracted from the host FQDN ("name-id.domainName"), or simply set to "pi".</Label>
             </Field>
 
 
-            <!-- ################## I/O Device Selection ################## -->
+            <!-- #################### Device Selection #################### -->
 
 
              <!-- digitalOutput selectionSeparator -->
-            <Field id="selectionSeparator" type="separator"> </Field>
 
-            <Field id="selectionTitle" type="label" alignText="center">
-                <Label>Select I/O Device</Label>
+            <Field id="zzSelectionSeparator" type="separator"> </Field>
+
+            <Field id="zzSelectionTitle" type="label" alignText="center">
+                <Label>Select Digital Output Device</Label>
             </Field>
 
 
              <!-- digitalOutput ioDevType -->
+
             <Field id="ioDevType" type="menu" defaultValue="pigpio">
-                <Label>I/O Device Type:</Label>
+                <Label>Digital Output Device:</Label>
                 <List>
                     <Option value="pigpio">Built-in Raspberry Pi GPIO</Option>
                     <Option value="dkrPiRly">I2C Docker Pi Relay</Option>
@@ -1040,6 +1231,7 @@ v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
 
 
              <!-- digitalOutput gpioNumber -->
+
             <Field id="gpioNumber" type="menu" defaultValue="17"
                    visibleBindingId="ioDevType" visibleBindingValue="pigpio">
                 <Label>BCM GPIO Number:</Label>
@@ -1066,6 +1258,7 @@ v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
 
 
             <!-- digitalOutput i2cAddress -->
+
             <Field id="i2cAddress" type="textfield"  hidden="true"> </Field>
 
             <Field id="i2cAddress4" type="menu" defaultValue="0x10"
@@ -1079,7 +1272,7 @@ v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
                 </List>
             </Field>
 
-            <Field id="i2cAddress8" type="menu" defaultValue="0x00"
+            <Field id="i2cAddress8" type="menu" defaultValue="0x20"
                    visibleBindingId="ioDevType"
                    visibleBindingValue="(MCP23008, MCP23017)">
                 <Label>I2C Address:</Label>
@@ -1097,6 +1290,7 @@ v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
 
 
             <!--  digitalOutput relayNumber  -->
+
             <Field id="relayNumber" type="menu" defaultValue="1"
                    visibleBindingId="ioDevType" visibleBindingValue="dkrPiRly">
                 <Label>Relay Number:</Label>
@@ -1110,6 +1304,7 @@ v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
 
 
             <!-- digitalOutput spiChannel -->
+
             <Field id="spiChannel" type="menu" visibleBindingId="ioDevType"
                    visibleBindingValue="(MCP23S08, MCP23S17)">
                 <Label>SPI Channel:</Label>
@@ -1121,6 +1316,7 @@ v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
 
 
             <!-- digitalOutput spiDevAddress -->
+
             <Field id="spiDevAddress" type="textfield" hidden="true"> </Field>
 
             <Field id="spiDevAddress4" type="menu" defaultValue="0x20"
@@ -1151,6 +1347,7 @@ v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
 
 
             <!-- digitalOutput ioPort -->
+
             <Field id="ioPort" type="menu" defaultValue="a"
                    visibleBindingId="ioDevType"
                    visibleBindingValue="(MCP23017, MCP23S17)">
@@ -1163,6 +1360,7 @@ v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
 
 
             <!-- digitalOutput bitNumber -->
+
             <Field id="bitNumber" type="menu" defaultValue="0"
                    visibleBindingId="ioDevType"
                    visibleBindingValue="(MCP23008, MCP23017, MCP23S08, MCP23S17)">
@@ -1180,18 +1378,20 @@ v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
             </Field>
 
 
-            <!-- ############## Output Device Configuration ############### -->
+            <!-- ################## Device Configuration ################## -->
 
 
             <!-- digitalOutput configSeparator -->
-            <Field id="configSeparator" type="separator"> </Field>
 
-            <Field id="configTitle" type="label" alignText="center">
-                <Label>Configure Output Device</Label>
+            <Field id="zzConfigSeparator" type="separator"> </Field>
+
+            <Field id="zzConfigTitle" type="label" alignText="center">
+                <Label>Configure Digital Output</Label>
             </Field>
 
 
             <!-- digitalOutput momentary -->
+
             <Field id="momentary" type="checkbox" defaultValue="false">
                 <Label>Momentary Turn-on:</Label>
             </Field>
@@ -1201,7 +1401,7 @@ v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
                 <Label>Turn-off Delay (0-10 seconds):</Label>
             </Field>
 
-            <Field id="delayLabel" type="label" fontSize="small"
+            <Field id="zzDelayLabel" type="label" fontSize="small"
                    fontColor="darkgray" alignWithControl="true"
                    visibleBindingId="momentary" visibleBindingValue="true">
                 <Label>A turn-off delay of 0 seconds results in an actual delay of about 0.25 seconds.</Label>
@@ -1209,6 +1409,7 @@ v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
 
 
             <!-- digitalOutput pwm -->
+
             <Field id="pwm" type="checkbox" defaultValue="false"
                    visibleBindingId="ioDevType" visibleBindingValue="pigpio">
                 <Label>Pulse Width Modulation (PWM):</Label>
@@ -1219,12 +1420,11 @@ v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
                 <Label>PWM Frequency (1-8000 Hertz):</Label>
             </Field>
 
-            <Field id="frequencyLabel" type="label" fontSize="small"
+            <Field id="zzFrequencyLabel" type="label" fontSize="small"
                    fontColor="darkgray" alignWithControl="true"
                    visibleBindingId="pwm" visibleBindingValue="true">
                 <Label>The frequency actually used will be one of 16 discrete values that is closest to the frequency specified.  See the pigpio library documentation.</Label>
             </Field>
-
 
             <Field id="dutyCycle" type="textfield" defaultValue="50"
                    visibleBindingId="pwm" visibleBindingValue="true">
@@ -1232,59 +1432,57 @@ v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
             </Field>
 
             <!-- digitalOutput bitRate -->
+
             <Field id="bitRate" type="textfield" defaultValue="2000"
                    visibleBindingId="ioDevType" visibleBindingValue="(MCP23S08, MCP23S17)">
                 <Label>SPI Bit Rate (100-10000 kb/s):</Label>
             </Field>
 
-            <Field id="bitRateLabel" type="label" fontSize="small"
+            <Field id="zzBitRateLabel" type="label" fontSize="small"
                    fontColor="darkgray" alignWithControl="true">
                 <Label>SPI bus data transfer rate for this device.  The bit rate in kb/s is usually equal to the SPI clock rate in kHz.</Label>
             </Field>
 
 
-            <!-- #################### Polling Options ##################### -->
+            <!-- #################### Logging Options ##################### -->
 
 
-            <!-- digitalOutput pollingSeparator -->
-            <Field id="pollingSeparator" type="separator"> </Field>
+            <!-- digitalOutput loggingSeparator -->
 
-            <Field id="pollingTitle" type="label" alignText="center">
-                <Label>Select Polling Options</Label>
+            <Field id="zzLoggingSeparator" type="separator"> </Field>
+
+            <Field id="zzLoggingTitle" type="label" alignText="center">
+                <Label>Select Logging Options</Label>
             </Field>
 
 
             <!-- digitalOutput polling -->
+
             <Field id="polling" type="checkbox" defaultValue="false">
-                <Label>Enable Output Polling:</Label>
+                <Label>Enable Output Logging:</Label>
             </Field>
 
-            <Field id="pollingLabel" type="label" fontSize="small"
+            <Field id="zzPollingLabel" type="label" fontSize="small"
                    fontColor="darkgray" alignWithControl="true">
-                <Label>Read the output at regular intervals and log the output state if it has changed.  With the log all option, output polling is useful to periodically record the output state regardless of change.</Label>
+                <Label>Log the output state at regular intervals.</Label>
             </Field>
 
-            <Field id="pollingInterval" type="textfield" defaultValue="0"
+            <Field id="pollingInterval" type="textfield" defaultValue="10"
                    visibleBindingId="polling" visibleBindingValue="true">
-                <Label>Polling Interval (seconds):</Label>
+                <Label>Logging Interval (seconds):</Label>
             </Field>
 
-            <Field id="intervalLabel" type="label" fontSize="small"
+            <Field id="zzPollingIntervalLabel" type="label" fontSize="small"
                    fontColor="darkgray" alignWithControl="true"
                    visibleBindingId="polling" visibleBindingValue="true">
-                <Label>Setting the interval to 0.0 reads the output in each pass through the run loop.  The actual polling interval depends on the run loop time.</Label>
+                <Label>Setting the interval to 0 logs the output state in each pass through the run loop.  The actual logging interval depends on the run loop time.</Label>
             </Field>
 
 
             <!-- digitalOutput logAll -->
+
             <Field id="logAll" type="checkbox" defaultValue="true"
                    hidden="true"> </Field>
-
-            <Field id="logAllLabel" type="label" fontSize="small"
-                   fontColor="darkgray" alignWithControl="true"
-                   visibleBindingId="polling" visibleBindingValue="true">
-                <Label>Log the output state after each poll, regardless of change.  By default, only changed states are logged.</Label>
-            </Field>
 
 
         </ConfigUI>
