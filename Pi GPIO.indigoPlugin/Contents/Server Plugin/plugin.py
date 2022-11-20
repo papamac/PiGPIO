@@ -16,8 +16,8 @@ FUNCTION:  plugin.py defines the Plugin class, with standard methods that
    USAGE:  plugin.py is included in the Pi GPIO.indigoPlugin bundle and its
            methods are called by the Indigo server.
   AUTHOR:  papamac
- VERSION:  0.5.8
-    DATE:  September 11, 2022
+ VERSION:  0.6.0
+    DATE:  November 20, 2022
 
 
 UNLICENSE:
@@ -107,6 +107,8 @@ v0.5.3   3/28/2022  Improve validation for low and high analog limits.
 v0.5.7   7/20/2022  Update for Python 3.
 v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
 v0.5.9  10/12/2022  Add glitch filter option for built-in GPIO inputs.
+v0.6.0  11/20/2022  Use properties in pluginProps and pluginPrefs directly
+                    without duplicating them as ioDev instance objects.
 """
 ###############################################################################
 #                                                                             #
@@ -117,7 +119,7 @@ v0.5.9  10/12/2022  Add glitch filter option for built-in GPIO inputs.
 
 __author__ = 'papamac'
 __version__ = '0.6.0'
-__date__ = '8/28/2022'
+__date__ = '11/20/2022'
 
 from logging import getLogger, NOTSET
 
@@ -186,18 +188,9 @@ class Plugin(indigo.PluginBase):
         LOG.setLevel('THREADDEBUG' if level == 'THREAD' else level)
         LOG.threaddebug('startup called')
 
-        # Set pigpioDevices.PiGPIODevice class attributes from pluginPrefs.
-
-        pigpioDevices.PiGPIODevice.monitorStatus = \
-            self.pluginPrefs['monitorStatus']
-        pigpioDevices.PiGPIODevice.statusInterval = \
-            self.pluginPrefs['statusInterval']
-        pigpioDevices.PiGPIODevice.checkSPI = self.pluginPrefs['checkSPI']
-
-    @staticmethod
-    def deviceStartComm(dev):
+    def deviceStartComm(self, dev):
         LOG.threaddebug('deviceStartComm called "%s"', dev.name)
-        pigpioDevices.start(dev)
+        pigpioDevices.start(self, dev)
 
     @staticmethod
     def deviceStopComm(dev):
@@ -255,44 +248,33 @@ class Plugin(indigo.PluginBase):
 
         # Set logging level.
 
-        level = valuesDict['loggingLevel']
-        LOG.setLevel('THREADDEBUG' if level == 'THREAD' else level)
+        loggingLevel = valuesDict['loggingLevel']
+        LOG.setLevel('THREADDEBUG' if loggingLevel == 'THREAD'
+                     else loggingLevel)
 
         # Validate status interval and run loop sleep time.
 
         try:
-            status = float(valuesDict['statusInterval'])
+            statusInterval = float(valuesDict['statusInterval'])
         except ValueError:
             errors['statusInterval'] = 'Status interval must be a number.'
         else:
-            if status < 0.0:
-                errors['pollingInterval'] = ('Status interval must be '
-                                             'non-negative.')
+            if statusInterval < 0.0:
+                errors['statusInterval'] = ('Status interval must be '
+                                            'non-negative.')
         try:
-            sleep = float(valuesDict['runLoopSleepTime'])
+            runLoopSleepTime = float(valuesDict['runLoopSleepTime'])
         except ValueError:
             errors['runLoopSleepTime'] = ('Run loop sleep time must be a '
                                           'number.')
         else:
-            if sleep < 0.0:
+            if runLoopSleepTime < 0.0:
                 errors['runLoopSleepTime'] = ('Run loop sleep time must be '
                                               'non-negative.')
 
-        if errors:
-            return False, valuesDict, errors  # Return with errors.
+        # Return with or without errors.
 
-        else:
-
-            # No errors; update pigpioDevices.PiGPIODevice class attributes
-            # from the valuesDict.
-
-            pigpioDevices.PiGPIODevice.monitorStatus = \
-                valuesDict['monitorStatus']
-            pigpioDevices.PiGPIODevice.statusInterval = \
-                valuesDict['statusInterval']
-            pigpioDevices.PiGPIODevice.checkSPI = valuesDict['checkSPI']
-
-            return True, valuesDict  # Return without errors.
+        return not bool(errors), valuesDict, errors
 
     @staticmethod
     def validateDeviceConfigUi(valuesDict, typeId, devId):
@@ -302,18 +284,18 @@ class Plugin(indigo.PluginBase):
         errors = indigo.Dict()
 
         ioDevType = valuesDict['ioDevType']
-        interface = pigpioDevices.IODEV_DATA[ioDevType][1]
+        ioDevInterface = pigpioDevices.IODEV_DATA[ioDevType][1]
 
         # Validation of common properties for all device types:
 
         hostAddress = valuesDict['hostAddress']
         try:  # Check portNumber.
-            port = int(valuesDict['portNumber'])
+            portNumber = int(valuesDict['portNumber'])
         except ValueError:
             errors['portNumber'] = 'Port number must be an integer.'
         else:
-            if 1024 <= port <= 65535:
-                pi = pigpio.pi(hostAddress, port)
+            if 1024 <= portNumber <= 65535:
+                pi = pigpio.pi(hostAddress, portNumber)
                 if not pi.connected:
                     error = 'Connection failed.'
                     errors['hostAddress'] = errors['portNumber'] = error
@@ -321,45 +303,43 @@ class Plugin(indigo.PluginBase):
             else:
                 errors['portNumber'] = 'Port number must be in range.'
 
-        pollingInterval = valuesDict.get('pollingInterval')
-        if pollingInterval:  # Skip if pollingInterval not in ConfigUi.
-            try:  # Check pollingInterval.
-                poll = float(pollingInterval)
-            except ValueError:
-                error = 'Polling interval must be a number.'
+        try:  # Check pollingInterval.
+            pollingInterval = float(valuesDict['pollingInterval'])
+        except ValueError:
+            error = 'Polling/logging interval must be a number.'
+            errors['pollingInterval'] = error
+        else:
+            if pollingInterval < 0.0:
+                error = 'Polling interval must be non-negative.'
                 errors['pollingInterval'] = error
-            else:
-                if poll < 0.0:
-                    error = 'Polling interval must be non-negative.'
-                    errors['pollingInterval'] = error
 
         # Validation of properties for SPI devices:
 
-        if interface is pigpioDevices.SPI:
+        if ioDevInterface is pigpioDevices.SPI:
             try:  # Check bitRate.
-                rate = float(valuesDict['bitRate'])
+                bitRate = float(valuesDict['bitRate'])
             except ValueError:
                 errors['bitRate'] = 'Bit Rate must be a number.'
             else:
-                if not 100 <= rate <= 10000:
+                if not 100 <= bitRate <= 10000:
                     errors['bitRate'] = 'Bit Rate must be in range.'
 
         # Validation of properties for specific typeIds:
 
         if typeId == 'analogInput':
 
-            try:  # Check scaling.
+            try:  # Check scaling factor.
                 float(valuesDict['scaling'])
             except ValueError:
                 errors['scaling'] = 'Scaling Factor must be a number.'
 
             try:  # Check changeThreshold.
-                threshold = float(valuesDict['changeThreshold'])
+                changeThreshold = float(valuesDict['changeThreshold'])
             except ValueError:
                 error = 'Change Threshold must be a number.'
                 errors['changeThreshold'] = error
             else:
-                if threshold < 0.0:
+                if changeThreshold < 0.0:
                     error = 'Change Threshold must be non-negative.'
                     errors['changeThreshold'] = error
 
@@ -384,7 +364,7 @@ class Plugin(indigo.PluginBase):
 
         elif typeId == 'analogOutput':
 
-            try:  # Check scaling.
+            try:  # Check scaling factor.
                 float(valuesDict['scaling'])
             except ValueError:
                 errors['scaling'] = 'Scaling Factor must be a number.'
@@ -417,30 +397,30 @@ class Plugin(indigo.PluginBase):
         elif typeId == 'digitalOutput':
 
             try:  # Check turnOffDelay.
-                delay = float(valuesDict['turnOffDelay'])
+                turnOffDelay = float(valuesDict['turnOffDelay'])
             except ValueError:
                 error = 'Turn-off Delay must be a number.'
                 errors['turnOffDelay'] = error
             else:
-                if not 0 <= delay <= 10:
+                if not 0 <= turnOffDelay <= 10:
                     error = 'Turn-off Delay must be in range.'
                     errors['turnOffDelay'] = error
 
             try:  # Check frequency.
-                freq = int(valuesDict['frequency'])
+                frequency = int(valuesDict['frequency'])
             except ValueError:
                 errors['frequency'] = 'Frequency must be an integer.'
             else:
-                if not 1 <= freq <= 8000:
+                if not 1 <= frequency <= 8000:
                     errors['frequency'] = 'Frequency must be in range.'
 
             error = 'Duty Cycle must be an integer percentage (0-100%)'
             try:  # # Check dutyCycle.
-                duty = int(valuesDict['dutyCycle'])
+                dutyCycle = int(valuesDict['dutyCycle'])
             except ValueError:
                 errors['dutyCycle'] = error
             else:
-                if not 0 <= duty <= 100:
+                if not 0 <= dutyCycle <= 100:
                     errors['dutyCycle'] = error
 
         if errors:  # Return if there were errors.
@@ -465,14 +445,14 @@ class Plugin(indigo.PluginBase):
             if ioDevType == 'pigpio':  # gpio device.
                 address += '.g' + valuesDict['gpioNumber']
             else:
-                if interface is pigpioDevices.I2C:  # i2c device.
+                if ioDevInterface is pigpioDevices.I2C:  # i2c device.
                     i2cAddress = valuesDict['i2cAddress8']
                     if ioDevType == 'dkrPiRly':
                         i2cAddress = valuesDict['i2cAddress4']
                     valuesDict['i2cAddress'] = i2cAddress
                     address += '.i' + i2cAddress[2:]
 
-                elif interface is pigpioDevices.SPI:  # spi device.
+                elif ioDevInterface is pigpioDevices.SPI:  # spi device.
                     address += '.s' + valuesDict['spiChannel']
                     if 'S' in ioDevType:
                         spiDevAddress4 = valuesDict['spiDevAddress4']
