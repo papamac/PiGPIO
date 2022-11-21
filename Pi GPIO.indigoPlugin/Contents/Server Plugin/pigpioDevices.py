@@ -16,8 +16,8 @@ FUNCTION:  pigpioDevices.py provides classes to define and manage five
    USAGE:  pigpioDevices.py is included by the primary plugin class,
            Plugin.py.  Its methods are called as needed by Plugin.py methods.
   AUTHOR:  papamac
- VERSION:  0.6.0
-    DATE:  November 20, 2022
+ VERSION:  0.6.1
+    DATE:  November 21, 2022
 
 
 UNLICENSE:
@@ -107,6 +107,7 @@ v0.6.0  11/20/2022  Use properties in pluginProps and pluginPrefs directly
                     without duplicating them as ioDev instance objects.  Update
                     pigpio resource management to accurately maintain the
                     connection resource use counts.
+v0.6.1  11/21/2022  Improve efficiency in interrupt relay.
 """
 ###############################################################################
 #                                                                             #
@@ -116,8 +117,8 @@ v0.6.0  11/20/2022  Use properties in pluginProps and pluginPrefs directly
 ###############################################################################
 
 __author__ = 'papamac'
-__version__ = '0.6.0'
-__date__ = '11/20/2022'
+__version__ = '0.6.1'
+__date__ = '11/21/2022'
 
 from abc import ABC, abstractmethod
 from datetime import datetime
@@ -253,6 +254,7 @@ class PiGPIODevice(ABC):
     PiGPIODevice is an abstract base class (ABC) used in defining all Pi GPIO
     device classes.  The __init__ method initializes pigpio host access and
     polling
+    *************************** needs work ************************************
     status variables.  Additional private methods initialize i2c and spi bus
     access and update the Indigo device states for digital and analog devices.
     It has one public method (stop) that terminates the instance's pigpio
@@ -268,7 +270,7 @@ class PiGPIODevice(ABC):
     IMAGE_SEL = (indigo.kStateImageSel.SensorOff,  # State image selectors.
                  indigo.kStateImageSel.SensorOn)
 
-    # Class dictionaries:
+    # Class dictionary:
 
     _resources = {}  # self._resources[resourceId] = (resource, useCount).
 
@@ -551,6 +553,9 @@ class PiGPIODevice(ABC):
 
     # Public instance methods:
 
+    def getName(self):
+        return self._dev.name
+
     def read(self, logAll=True):
         try:
             self._read(logAll=logAll)
@@ -814,30 +819,20 @@ class DockerPiRelay(PiGPIODevice):
         LOG.info('"%s" is %s', self._dev.name, ON_OFF[onOffState])
 
     def _write(self, value):  # Implementation of abstract method.
-
-        # Check the argument.
-
         bit = 99
         try:
             bit = int(value)
         except ValueError:
             pass
         if bit in (ON, OFF):
-
-            # Good bit.  Write it to the relay and update the onOffState.
-
             relayNumber = int(self._dev.pluginProps['relayNumber'])
             self._pi.i2c_write_byte_data(self._handle, relayNumber, bit)
             LOG.debug('"%s" write %s', self._dev.name, ON_OFF[bit])
             self._updateOnOffState(bit)
-
-            # Process optional momentary turn off.
-
             if bit:
                 if self._dev.pluginProps['momentary']:
                     sleep(float(self._dev.pluginProps['turnOffDelay']))
                     self._write(OFF)
-
         else:
             LOG.warning('"%s" invalid output value %s; write ignored',
                         self._dev.name, value)
@@ -945,35 +940,25 @@ class IOExpander(PiGPIODevice):
             self._updateRegister('DEFVAL', OFF)  # Clear default bit.
             self._updateRegister('INTCON', OFF)  # Interrupt on change.
             hardwareInterrupt = dev.pluginProps['hardwareInterrupt']
-            if hardwareInterrupt:
-
-                # Set up the hardware interrupt relay as follows:
-                # Get the interrupt relay io device object and append the
-                # device id of this device to the object's interrupt
-                # devices list.  If the interrupt relay io device is
-                # missing, try starting it.  If it fails to start raise a
-                # start exception for the device.
-
+            self._updateRegister('GPINTEN', hardwareInterrupt)
+            if hardwareInterrupt:  # Configure int relay; get relay io dev.
                 interruptRelayGPIO = dev.pluginProps['interruptRelayGPIO']
                 relayDev = indigo.devices[interruptRelayGPIO]
                 rioDev = ioDevices.get(relayDev.id)
-                if not rioDev:
+                if not rioDev:  # Not initialized yet; try starting it.
                     LOG.info('"%s" starting interrupt relay GPIO "%s"',
                              self._dev.name, interruptRelayGPIO)
                     start(self._plugin, relayDev)
                     rioDev = ioDevices.get(relayDev.id)
-                    if not rioDev:
+                    if not rioDev:  # Start failed; raise exception.
                         errorMessage = ('interrupt relay GPIO "%s" not'
                                         ' started' % interruptRelayGPIO)
                         raise Exception(errorMessage)
 
-                if self._dev.id not in rioDev.interruptDevices:
-                    rioDev.interruptDevices.append(self._dev.id)
-                for intDevId in rioDev.interruptDevices:
-                    intDev = indigo.devices[intDevId]
-                    LOG.debug('"%s" %s', intDev.name, intDevId)
+                # Add this io device object to the relay io device's internal
+                # interrupt devices list.
 
-            self._updateRegister('GPINTEN', hardwareInterrupt)
+                rioDev.addInterruptDevice(self)
 
         elif dev.deviceTypeId == 'digitalOutput':
             self._updateRegister('IODIR', self.OUTPUT)
@@ -1038,29 +1023,18 @@ class IOExpander(PiGPIODevice):
         return bit
 
     def _write(self, value):  # Implementation of abstract method.
-
-        # Check the argument.
-
         bit = 99
         try:
             bit = int(value)
         except ValueError:
             pass
         if bit in (ON, OFF):
-
-            # Good bit.  Write it to the GPIO register and update the
-            # onOffState.
-
             self._updateRegister('GPIO', bit)
             self._updateOnOffState(bit)
-
-            # Process optional momentary turn off.
-
             if bit:
                 if self._dev.pluginProps['momentary']:
                     sleep(float(self._dev.pluginProps['turnOffDelay']))
                     self._write(OFF)
-
         else:
             LOG.warning('"%s" invalid output value %s; write ignored',
                         self._dev.name, value)
@@ -1068,7 +1042,6 @@ class IOExpander(PiGPIODevice):
     # Public instance methods:
 
     def interrupt(self):
-
         try:
             # Read and check interrupt flag register for interrupt on this
             # device.
@@ -1094,7 +1067,6 @@ class IOExpander(PiGPIODevice):
                     LOG.warning('"%s" lost interrupts %02x',
                                 self._dev.name, lostInterrupts)
                 return True  # Signal an interrupt match.
-
         except Exception as errorMessage:
             pigpioFatalError(self._dev, 'int', errorMessage)
 
@@ -1116,7 +1088,6 @@ class PiGPIO(PiGPIODevice):
     """
     Include discussion of callback, interrupt relay, and debouncing.
     """
-
     # Class constant:
 
     PUD = {'off': pigpio.PUD_OFF,  # GPIO pullup parameter definitions.
@@ -1145,12 +1116,13 @@ class PiGPIO(PiGPIODevice):
                     self._pi.set_glitch_filter(self._gpioNumber, glitchTime)
                 if dev.pluginProps['relayInterrupts']:
 
-                    # Initialize public instance attribute to collect
-                    # interrupt device id's.  This list is populated by
-                    # the __init__ methods of devices whose hardware
-                    # interrupt output is connected to this GPIO input.
+                    # Initialize an internal interrupt devices list to save
+                    # the device objects of all io devices whose hardware
+                    # interrupt output is connected to this GPIO input.  This
+                    # supports the interrupt relay function in the
+                    # self._callback method below.
 
-                    self.interruptDevices = []
+                    self._interruptDevices = []
 
         elif dev.deviceTypeId == 'digitalOutput':
             self._pi.set_mode(self._gpioNumber, pigpio.OUTPUT)
@@ -1159,13 +1131,14 @@ class PiGPIO(PiGPIODevice):
                 frequency = int(dev.pluginProps['frequency'])
                 self._pi.set_PWM_frequency(self._gpioNumber, frequency)
 
-    def _callback(self, gpioNum, pinBit, tic):
-        LOG.debug('"%s" callback %s %s %s µs',
-                  self._dev.name, gpioNum, pinBit, tic)
+    def _callback(self, gpioNumber, pinBit, tic):
+        dt = pigpio.tickDiff(self._priorTic, tic)
+        self._priorTic = tic
+        LOG.debug('"%s" callback %s %s %s %s',
+                  self._dev.name, gpioNumber, pinBit, tic, dt)
+        logAll = True  # Default logging option for state update.
         if pinBit in (ON, OFF):
             bit = pinBit ^ self._dev.pluginProps['invert']
-            dt = pigpio.tickDiff(self._priorTic, tic)
-            self._priorTic = tic
 
             # Apply the contact bounce filter, if requested.
 
@@ -1176,15 +1149,12 @@ class PiGPIO(PiGPIODevice):
                                     self._dev.name, dt, ON_OFF[bit])
                     return  # Ignore the bounced state change.
 
-            logAll = True  # Default logging option for state update.
-
             # Relay interrupts, if requested.
 
-            if self._dev.pluginProps['relayInterrupts']:
+            elif self._dev.pluginProps['relayInterrupts']:
                 if bit:  # Interrupt initiated; process it and set watchdog.
-                    for devId in self.interruptDevices:
-                        ioDev = ioDevices.get(devId)
-                        if ioDev and ioDev.interrupt():  # ioDev interrupt.
+                    for ioDev in self._interruptDevices:
+                        if ioDev.interrupt():  # Interrupt successful.
                             break  # Only one match allowed per interrupt.
                     else:
                         LOG.warning('"%s" no match in interrupt devices list',
@@ -1194,7 +1164,6 @@ class PiGPIO(PiGPIODevice):
                     LOG.debug('"%s" interrupt time is %s ms',
                               self._dev.name, dt / 1000)
                     self._pi.set_watchdog(self._gpioNumber, 0)
-
                 logAll = None  # Suppress logging for interrupt relay GPIO.
 
             # Update the onOff state.
@@ -1203,7 +1172,7 @@ class PiGPIO(PiGPIODevice):
 
         else:  # Interrupt reset timeout.
             LOG.warning('"%s" interrupt reset timeout', self._dev.name)
-            for ioDev in self.interruptDevices:
+            for ioDev in self._interruptDevices:
                 ioDev.resetInterrupt()
             self._pi.set_watchdog(self._gpioNumber, 0)  # Clear watchdog.
 
@@ -1234,3 +1203,14 @@ class PiGPIO(PiGPIODevice):
         else:
             LOG.warning('"%s" invalid output value %s; write ignored',
                         self._dev.name, value)
+
+    # Public instance method:
+
+    def addInterruptDevice(self, ioDev):
+        """
+        Add interrupt device to the internal interrupt devices list.
+        """
+        if ioDev not in self._interruptDevices:
+            self._interruptDevices.append(ioDev)
+        LOG.debug('"%s" added interrupt device "%s"', self._dev.name,
+                  ioDev.getName())
