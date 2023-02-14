@@ -8,8 +8,8 @@ FUNCTION:  Actions.xml defines PiGPIO action objects and specifies action
    USAGE:  Actions.xml is read and interpreted by the indigo server during
            plugin startup.
  AUTHORS:  papamac
- VERSION:  0.5.0
-    DATE:  November 28, 2021
+ VERSION:  0.7.0
+    DATE:  February 14, 2023
 
 CHANGE LOG:
 
@@ -18,6 +18,8 @@ top level PiGPIO folder.  Changes of lesser importance may be described in
 individual module docstrings if appropriate.
 
 v0.5.0  11/28/2021  Fully functional beta version with minimal documentation.
+v0.7.0   2/14/2023  Add turnOn/turnOff device actions for analog output
+                    devices.
 -->
 
 <Actions>
@@ -32,22 +34,15 @@ v0.5.0  11/28/2021  Fully functional beta version with minimal documentation.
 	</Action>
 
 
-	<Action id="writeBit" uiPath="DeviceActions" deviceFilter="self">
-		<Name>Write Bit</Name>
-		<CallbackMethod>write</CallbackMethod>
-		<ConfigUI>
-
-			<Field id="value" type="menu" defaultValue="0">
-                <Label>Enter Bit Value:</Label>
-                <List>
-                    <Option value="0">Off</Option>
-                    <Option value="1">On</Option>
-                </List>
-            </Field>
-
-		</ConfigUI>
+	<Action id="turnOn" uiPath="DeviceActions" deviceFilter="self">
+		<Name>Turn On</Name>
+		<CallbackMethod>turnOn</CallbackMethod>
 	</Action>
 
+	<Action id="turnOff" uiPath="DeviceActions" deviceFilter="self">
+		<Name>Turn Off</Name>
+		<CallbackMethod>turnOff</CallbackMethod>
+	</Action>
 
 	<Action id="write" uiPath="DeviceActions" deviceFilter="self">
 		<Name>Write</Name>

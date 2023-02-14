@@ -9,29 +9,27 @@ FUNCTION:  Devices.xml defines Pi GPIO device objects, specifies ConfigUis, and
            plugin startup.  When a user creates a new device, indigo uses the
            xml data to instantiate device objects per the indigo object model
            (IOM).  The device object includes a pluginProps dictionary that
-           contains the device properties from the xml.
+           contains the device properties from the xml fields.
   AUTHOR:  papamac
- VERSION:  0.6.0
-    DATE:  October 12, 2022
+ VERSION:  0.7.0
+    DATE:  February 14, 2023
 
 DESCRIPTION:
 
 This xml file contains ConfigUI descriptions for four devices: analogInput,
-analogOutput, digitalInput, and digitalOutput.  Within each ConfigUI there are
-the following groups of fields:
+analogOutput, digitalInput, and digitalOutput.  Each ConfigUI is organized
+into the following groups of fields and states:
 
-1. Sensor Value (analogInput and analogOutput devices only)
-2. Raspberry Pi Host
-3. Device Selection
-4. Device Configuration
-5. Change Detection and Limit Checking (analogInput device only)
-6. Interrupt and Filter Options (digitalInput device only)
-7. Polling and Logging Options (analogInput and digitalInput devices only)
-8. Logging Options (analogOutput and digitalOutput devices only)
+1. Raspberry Pi Host
+2. Device Type and Channel Id
+3. Device Configuration
+4. Processing
+5. Polling and Logging
+6. States
 
-Many of the field ids are repeated in the four device ConfigUIs.  For ease in
-locating the correct one, the fields are commented with the device type and
-field id.
+Many of the field id's are repeated in the four device ConfigUIs.  For ease in
+locating the correct one, fields are commented with the device type and field
+id.
 
 CHANGE LOG:
 
@@ -47,7 +45,22 @@ v0.5.9  10/12/2022  Add glitch filter option for built-in GPIO inputs.  Add a
                     they sort at the end of a valuesDict print.  Change polling
                     options to logging options for analog and digital output
                     devices.
+v0.7.0   2/14/2023  (1) Implement common sensor value processing for both
+                    analog input and analog output devices.  Optionally enable
+                    change detection, analog on/off thresholding, and limit
+                    checking.
+                    (2) Add display state selection for analog input and analog
+                    output devices.
+                    (3) Add turnOn/turnOff sensor values for analog output
+                    devices.
+                    (4) Change the device types for analog input and analog
+                    output devices to custom.  Add/modify the following states:
+                        sensorValue,
+                        onOffState,
+                        limitFault,
+                        and limitFaultMessage.
 -->
+
 
 <Devices>
 
@@ -59,22 +72,13 @@ v0.5.9  10/12/2022  Add glitch filter option for built-in GPIO inputs.  Add a
     <!-- ################################################################## -->
 
 
-    <Device id="analogInput" type="sensor">
+    <Device id="analogInput" type="custom">
         <Name>Analog Input</Name>
         <ConfigUI>
 
 
-            <!-- ##################### Sensor Value ####################### -->
-
-
-            <!-- analogInput SupportsSensorValue -->
-
-            <Field id="SupportsSensorValue" type="checkbox" hidden="true"
-                   defaultValue="true">
-            </Field>
-
-
-            <!-- ################### Raspberry Pi Host #################### -->
+            <!-- ############       Analog Input Device        ############ -->
+            <!-- ############      1. Raspberry Pi Host        ############ -->
 
 
             <!-- analogInput hostTitle -->
@@ -111,7 +115,8 @@ v0.5.9  10/12/2022  Add glitch filter option for built-in GPIO inputs.  Add a
             </Field>
 
 
-            <!-- #################### Device Selection #################### -->
+            <!-- ############       Analog Input Device        ############ -->
+            <!-- ############  2. Device Type and Channel Id   ############ -->
 
 
             <!-- analogInput selectionSeparator -->
@@ -119,7 +124,7 @@ v0.5.9  10/12/2022  Add glitch filter option for built-in GPIO inputs.  Add a
             <Field id="zzSelectionSeparator" type="separator"> </Field>
 
             <Field id="zzSelectionTitle" type="label" alignText="center">
-                <Label>Select ADC Device</Label>
+                <Label>Select ADC Device and Channel</Label>
             </Field>
 
 
@@ -215,7 +220,8 @@ v0.5.9  10/12/2022  Add glitch filter option for built-in GPIO inputs.  Add a
             </Field>
 
 
-            <!-- ################## Device Configuration ################## -->
+            <!-- ##############     Analog Input Device      ############## -->
+            <!-- ##############   3. Device Configuration    ############## -->
 
 
             <!-- analogInput configSeparator -->
@@ -242,10 +248,17 @@ v0.5.9  10/12/2022  Add glitch filter option for built-in GPIO inputs.  Add a
 
             <!-- analogInput referenceVoltage -->
 
-            <Field id="referenceVoltage" type="textfield" defaultValue="3.3"
+            <Field id="referenceVoltage" type="textfield" defaultValue="4.096"
                    visibleBindingId="ioDevType"
                    visibleBindingValue="(MCP3202, MCP3204, MCP3208)">
                 <Label>Reference Voltage (V):</Label>
+            </Field>
+
+            <Field id="zzReferenceVoltageLabel" type="label" fontSize="small"
+                   fontColor="darkgray" alignWithControl="true"
+                   visibleBindingId="ioDevType"
+                   visibleBindingValue="(MCP3202, MCP3204, MCP3208)">
+                <Label>Enter the internal reference voltage for the selected ADC, or the external reference voltage if used..</Label>
             </Field>
 
 
@@ -279,15 +292,15 @@ v0.5.9  10/12/2022  Add glitch filter option for built-in GPIO inputs.  Add a
             </Field>
 
 
-            <!-- analogInput scaling -->
+            <!-- analogInput scalingFactor -->
 
-            <Field id="scaling" type="textfield" defaultValue="2.47058824">
+            <Field id="scalingFactor" type="textfield" defaultValue="2.47058824">
                 <Label>Scaling Factor:</Label>
             </Field>
 
             <Field id="zzScalingLabel" type="label" fontSize="small"
                    fontColor="darkgray" alignWithControl="true">
-                <Label>The Scaling Factor is used to calibrate an analog input device for a specific application.  It multiplies all values read from the ADC.  The default value is for voltage measurements using the AB Electronics ADC Pi board.</Label>
+                <Label>The Scaling Factor is used to calibrate an analog input device for a specific application.  It multiplies all raw values read from the ADC.  The default value is for voltage measurements using the AB Electronics ADC Pi board.</Label>
             </Field>
 
 
@@ -325,69 +338,83 @@ v0.5.9  10/12/2022  Add glitch filter option for built-in GPIO inputs.  Add a
             </Field>
 
 
-            <!-- ########## Change Detection and Limit Checking ########### -->
+            <!-- ##############     Analog Input Device      ############## -->
+            <!-- ##############        4. Processing         ############## -->
 
 
-            <!-- analogInput changeSeparator -->
+            <!-- analogOutput processingSeparator -->
 
-            <Field id="zzChangeSeparator" type="separator"> </Field>
+            <Field id="zzProcessingSeparator" type="separator"> </Field>
 
-            <Field id="zzChangeTitle" type="label" alignText="center">
-                <Label>Select Change Detection and Limit Checking Options</Label>
+            <Field id="zzProcessingTitle" type="label" alignText="center">
+                <Label>Select Display and Processing Options</Label>
+            </Field>
+
+            <!-- analogInput displayStateId -->
+
+            <Field id="displayStateId" type="menu" defaultValue="sensorValue">
+                <Label>Display State:</Label>
+                <List>
+                    <Option value="sensorValue">Sensor Value</Option>
+                    <Option value="onOffState">On/Off State</Option>
+                </List>
+            </Field>
+
+            <Field id="zzDisplayStateIdLabel" type="label" fontSize="small"
+                   fontColor="darkgray" alignWithControl="true">
+                <Label>Select the state to display in the Indigo Home window.</Label>
             </Field>
 
 
             <!-- analogInput changeThreshold -->
 
-            <Field id="changeThreshold" type="textfield" defaultValue="1">
-                <Label>Change Threshold (percent):</Label>
+            <Field id="changeThreshold" type="textfield" defaultValue="None">
+                <Label>Change Detection Threshold (percent or None):</Label>
             </Field>
 
             <Field id="zzChangeThresholdLabel" type="label" fontSize="small"
                    fontColor="darkgray" alignWithControl="true">
-                <Label>Log a sensor value update if the value changes by this percentage or greater.</Label>
+                <Label>Enter a percentage threshold for change detection or None if no change detection is desired.</Label>
+            </Field>
+
+            <!-- analogInput onThreshold -->
+
+            <Field id="onThreshold" type="textfield" defaultValue="None">
+                <Label>Analog On Threshold (units or None):</Label>
+            </Field>
+
+            <Field id="zzOnThresholdLabel" type="label" fontSize="small"
+                   fontColor="darkgray" alignWithControl="true">
+                <Label>Enter an analog on threshold for the onOffState or None if no onOffState is desired.</Label>
             </Field>
 
 
-            <!-- analogInput lowLimitCheck -->
+            <!-- analogInput lowLimit -->
 
-            <Field id="lowLimitCheck" type="checkbox" defaultValue="false">
-                <Label>Low Limit Check:</Label>
-            </Field>
-
-            <Field id="lowLimit" type="textfield" defaultValue="0"
-                   visibleBindingId="lowLimitCheck" visibleBindingValue="true">
-                <Label>Low Limit:</Label>
+            <Field id="lowLimit" type="textfield" defaultValue="None">
+                <Label>Low Limit (units or None):</Label>
             </Field>
 
             <Field id="zzLowLimitLabel" type="label" fontSize="small"
-                   fontColor="darkgray" alignWithControl="true"
-                   visibleBindingId="lowLimitCheck" visibleBindingValue="true">
-                <Label>Log a low limit fault if the sensor value is less than the low limit.</Label>
+                   fontColor="darkgray" alignWithControl="true">
+                <Label>Enter a low limit for limit checking or None if no low limit checking is desired.</Label>
             </Field>
 
 
-            <!-- analogInput highLimitCheck -->
+             <!-- analogInput highLimit -->
 
-            <Field id="highLimitCheck" type="checkbox" defaultValue="false">
-                <Label>High Limit Check:</Label>
-            </Field>
-
-            <Field id="highLimit" type="textfield" defaultValue="0"
-                   visibleBindingId="highLimitCheck"
-                   visibleBindingValue="true">
-                <Label>High Limit:</Label>
+            <Field id="highLimit" type="textfield" defaultValue="None">
+                <Label>High Limit (units or None):</Label>
             </Field>
 
             <Field id="zzHighLimitLabel" type="label" fontSize="small"
-                   fontColor="darkgray" alignWithControl="true"
-                   visibleBindingId="highLimitCheck"
-                   visibleBindingValue="true">
-                <Label>Log a high limit fault if the sensor value is greater than the high limit.</Label>
+                   fontColor="darkgray" alignWithControl="true">
+                <Label>Enter a high limit for limit checking or None if no high limit checking is desired.</Label>
             </Field>
 
 
-            <!-- ############## Polling and Logging Options ############### -->
+            <!-- ############       Analog Input Device        ############ -->
+            <!-- ############      5. Polling and Logging      ############ -->
 
 
             <!-- analogInput pollingSeparator -->
@@ -439,10 +466,29 @@ v0.5.9  10/12/2022  Add glitch filter option for built-in GPIO inputs.  Add a
         </ConfigUI>
 
 
-        <!-- ########################## States ############################ -->
-
-
         <States>
+
+
+            <!-- ############       Analog Input Device        ############ -->
+            <!-- ############             6. States            ############ -->
+
+
+            <!-- analogInput sensorValue -->
+
+            <State id="sensorValue">
+                <ValueType>Number</ValueType>
+                <TriggerLabel>Sensor Value Change Detected</TriggerLabel>
+				<ControlPageLabel>Sensor Value Change Detected</ControlPageLabel>
+            </State>
+
+
+            <!-- analogInput onOffState -->
+
+            <State id="onOffState">
+				<ValueType boolType="OnOff">Boolean</ValueType>
+				<TriggerLabel>OnOff State</TriggerLabel>
+				<ControlPageLabel>OnOff State</ControlPageLabel>
+			</State>
 
 
             <!-- analogInput changeDetected -->
@@ -454,25 +500,27 @@ v0.5.9  10/12/2022  Add glitch filter option for built-in GPIO inputs.  Add a
             </State>
 
 
-            <!-- analogInput lowFault -->
+            <!-- analogInput limitFault -->
 
-            <State id="lowFault">
+            <State id="limitFault">
                 <ValueType boolType="TrueFalse">Boolean</ValueType>
-                <TriggerLabel>Sensor Value Low Fault</TriggerLabel>
-				<ControlPageLabel>Sensor Value Low Fault</ControlPageLabel>
+                <TriggerLabel>Sensor Value Limit Fault</TriggerLabel>
+				<ControlPageLabel>Sensor Value Limit Fault</ControlPageLabel>
             </State>
 
 
-            <!-- analogInput highFault -->
+            <!-- analogInput limitFaultMessage -->
 
-            <State id="highFault">
-                <ValueType boolType="TrueFalse">Boolean</ValueType>
-                <TriggerLabel>Sensor Value High Fault</TriggerLabel>
-				<ControlPageLabel>Sensor Value High Fault</ControlPageLabel>
+            <State id="limitFaultMessage">
+                <ValueType>String</ValueType>
+                <TriggerLabel>Last Limit Fault Message</TriggerLabel>
+				<ControlPageLabel>Last Limit Fault Message</ControlPageLabel>
             </State>
 
 
         </States>
+
+
     </Device>
 
 
@@ -483,22 +531,13 @@ v0.5.9  10/12/2022  Add glitch filter option for built-in GPIO inputs.  Add a
     <!-- ################################################################## -->
 
 
-    <Device id="analogOutput" type="sensor">
+    <Device id="analogOutput" type="custom">
         <Name>Analog Output</Name>
         <ConfigUI>
 
 
-            <!-- ##################### Sensor Value ####################### -->
-
-
-            <!-- analogOutput SupportsSensorValue -->
-
-            <Field id="SupportsSensorValue" type="checkbox" hidden="true"
-                   defaultValue="true">
-            </Field>
-
-
-            <!-- ################### Raspberry Pi Host #################### -->
+            <!-- ############       Analog Output Device       ############ -->
+            <!-- ############       1. Raspberry Pi Host       ############ -->
 
 
             <!-- analogOutput hostTitle -->
@@ -535,7 +574,8 @@ v0.5.9  10/12/2022  Add glitch filter option for built-in GPIO inputs.  Add a
             </Field>
 
 
-            <!-- #################### Device Selection #################### -->
+            <!-- ############      Analog Output Device        ############ -->
+            <!-- ############  2. Device Type and Channel Id   ############ -->
 
 
             <!-- analogOutput selectionSeparator -->
@@ -543,7 +583,7 @@ v0.5.9  10/12/2022  Add glitch filter option for built-in GPIO inputs.  Add a
             <Field id="zzSelectionSeparator" type="separator"> </Field>
 
             <Field id="zzSelectionTitle" type="label" alignText="center">
-                <Label>Select DAC Device</Label>
+                <Label>Select DAC Device and Channel</Label>
             </Field>
 
 
@@ -592,7 +632,8 @@ v0.5.9  10/12/2022  Add glitch filter option for built-in GPIO inputs.  Add a
             </Field>
 
 
-            <!-- ################## Device Configuration ################## -->
+            <!-- ##############    Analog Output Device      ############## -->
+            <!-- ##############   3. Device Configuration    ############## -->
 
 
             <!-- analogOutput configSeparator -->
@@ -615,15 +656,15 @@ v0.5.9  10/12/2022  Add glitch filter option for built-in GPIO inputs.  Add a
             </Field>
 
 
-            <!-- analogOutput scaling -->
+            <!-- analogOutput scalingFactor -->
 
-            <Field id="scaling" type="textfield" defaultValue="1">
+            <Field id="scalingFactor" type="textfield" defaultValue="1.0">
                 <Label>Scaling Factor:</Label>
             </Field>
 
             <Field id="zzScalingLabel" type="label" fontSize="small"
                    fontColor="darkgray" alignWithControl="true">
-                <Label>The Scaling Factor is used to calibrate an analog output device for a specific application.  It divides all values written to the DAC.</Label>
+                <Label>The Scaling Factor is used to calibrate an analog output device for a specific application.  It divides all sensor values written to the DAC.</Label>
             </Field>
 
 
@@ -647,6 +688,7 @@ v0.5.9  10/12/2022  Add glitch filter option for built-in GPIO inputs.  Add a
                 </List>
             </Field>
 
+
             <!-- analogOutput bitRate -->
 
             <Field id="bitRate" type="textfield" defaultValue="2000">
@@ -659,7 +701,109 @@ v0.5.9  10/12/2022  Add glitch filter option for built-in GPIO inputs.  Add a
             </Field>
 
 
-            <!-- #################### Logging Options ##################### -->
+            <!-- ##############     Analog Output Device     ############## -->
+            <!-- ##############        4. Processing         ############## -->
+
+
+            <!-- analogOutput processingSeparator -->
+
+            <Field id="zzProcessingSeparator" type="separator"> </Field>
+
+            <Field id="zzProcessingTitle" type="label" alignText="center">
+                <Label>Select Display and Processing Options</Label>
+            </Field>
+
+
+            <!-- analogOutput displayStateId -->
+
+            <Field id="displayStateId" type="menu" defaultValue="sensorValue">
+                <Label>Display State:</Label>
+                <List>
+                    <Option value="sensorValue">Sensor Value</Option>
+                    <Option value="onOffState">On/Off State</Option>
+                </List>
+            </Field>
+
+            <Field id="zzDisplayStateIdLabel" type="label" fontSize="small"
+                   fontColor="darkgray" alignWithControl="true">
+                <Label>Select the state to display in the Indigo Home window.</Label>
+            </Field>
+
+
+            <!-- analogOutput changeThreshold -->
+
+            <Field id="changeThreshold" type="textfield" defaultValue="None">
+                <Label>Change Detection Threshold (percent or None):</Label>
+            </Field>
+
+            <Field id="zzChangeThresholdLabel" type="label" fontSize="small"
+                   fontColor="darkgray" alignWithControl="true">
+                <Label>Enter a percentage threshold for change detection or None if no change detection is desired.</Label>
+            </Field>
+
+
+            <!-- analogOutput onThreshold -->
+
+            <Field id="onThreshold" type="textfield" defaultValue="None">
+                <Label>Analog On Threshold (units or None):</Label>
+            </Field>
+
+            <Field id="zzOnThresholdLabel" type="label" fontSize="small"
+                   fontColor="darkgray" alignWithControl="true">
+                <Label>Enter an analog on threshold for the onOffState or None if no onOffState is desired.</Label>
+            </Field>
+
+
+            <!-- analogOutput lowLimit -->
+
+            <Field id="lowLimit" type="textfield" defaultValue="None">
+                <Label>Low Limit (units or None):</Label>
+            </Field>
+
+            <Field id="zzLowLimitLabel" type="label" fontSize="small"
+                   fontColor="darkgray" alignWithControl="true">
+                <Label>Enter a low limit for limit checking or None if no low limit checking is desired.</Label>
+            </Field>
+
+
+             <!-- analogOutput highLimit -->
+
+            <Field id="highLimit" type="textfield" defaultValue="None">
+                <Label>High Limit (units or None):</Label>
+            </Field>
+
+            <Field id="zzHighLimitLabel" type="label" fontSize="small"
+                   fontColor="darkgray" alignWithControl="true">
+                <Label>Enter a high limit for limit checking or None if no high limit checking is desired.</Label>
+            </Field>
+
+
+            <!-- analogOutput turnOnValue -->
+
+            <Field id="turnOnValue" type="textfield" defaultValue="None">
+                <Label>Turn On Sensor Value (units or None):</Label>
+            </Field>
+
+            <Field id="zzTurnOnValueLabel" type="label" fontSize="small"
+                   fontColor="darkgray" alignWithControl="true">
+                <Label>Enter a sensor value to write in a turn on action, or None if no turn on is desired.</Label>
+            </Field>
+
+
+             <!-- analogOutput turnOffValue -->
+
+            <Field id="turnOffValue" type="textfield" defaultValue="None">
+                <Label>Turn Off Sensor Value (units or None):</Label>
+            </Field>
+
+            <Field id="zzTurnOffValueLabel" type="label" fontSize="small"
+                   fontColor="darkgray" alignWithControl="true">
+                <Label>Enter a sensor value to write in a turn off action, or None if no turn off is desired.</Label>
+            </Field>
+
+
+            <!-- ############       Analog Output Device       ############ -->
+            <!-- ############      5. Polling and Logging      ############ -->
 
 
             <!-- analogOutput loggingSeparator -->
@@ -701,6 +845,63 @@ v0.5.9  10/12/2022  Add glitch filter option for built-in GPIO inputs.  Add a
 
 
         </ConfigUI>
+
+
+        <States>
+
+
+            <!-- ############       Analog Output Device       ############ -->
+            <!-- ############             6. States            ############ -->
+
+
+            <!-- analogOutput sensorValue -->
+
+            <State id="sensorValue">
+                <ValueType>Number</ValueType>
+                <TriggerLabel>Sensor Value Change Detected</TriggerLabel>
+				<ControlPageLabel>Sensor Value Change Detected</ControlPageLabel>
+            </State>
+
+
+            <!-- analogOutput onOffState -->
+
+            <State id="onOffState">
+				<ValueType boolType="OnOff">Boolean</ValueType>
+				<TriggerLabel>OnOff State</TriggerLabel>
+				<ControlPageLabel>OnOff State</ControlPageLabel>
+			</State>
+
+
+            <!-- analogOutput changeDetected -->
+
+            <State id="changeDetected">
+                <ValueType boolType="TrueFalse">Boolean</ValueType>
+                <TriggerLabel>Sensor Value Change Detected</TriggerLabel>
+				<ControlPageLabel>Sensor Value Change Detected</ControlPageLabel>
+            </State>
+
+
+            <!-- analogOutput limitFault -->
+
+            <State id="limitFault">
+                <ValueType boolType="TrueFalse">Boolean</ValueType>
+                <TriggerLabel>Sensor Value Limit Fault</TriggerLabel>
+				<ControlPageLabel>Sensor Value Limit Fault</ControlPageLabel>
+            </State>
+
+
+            <!-- analogOutput limitFaultMessage -->
+
+            <State id="limitFaultMessage">
+                <ValueType>String</ValueType>
+                <TriggerLabel>Last Limit Fault Message</TriggerLabel>
+				<ControlPageLabel>Last Limit Fault Message</ControlPageLabel>
+            </State>
+
+
+        </States>
+
+
     </Device>
 
 
@@ -716,7 +917,8 @@ v0.5.9  10/12/2022  Add glitch filter option for built-in GPIO inputs.  Add a
         <ConfigUI>
 
 
-            <!-- ################### Raspberry Pi Host #################### -->
+            <!-- ############       Digital Input Device       ############ -->
+            <!-- ############       1. Raspberry Pi Host       ############ -->
 
 
             <!-- digitalInput hostTitle-->
@@ -753,7 +955,8 @@ v0.5.9  10/12/2022  Add glitch filter option for built-in GPIO inputs.  Add a
             </Field>
 
 
-            <!-- #################### Device Selection #################### -->
+            <!-- ############      Digital Input Device        ############ -->
+            <!-- ############  2. Device Type and Channel Id   ############ -->
 
 
             <!-- digitalInput selectionSeparator -->
@@ -761,7 +964,7 @@ v0.5.9  10/12/2022  Add glitch filter option for built-in GPIO inputs.  Add a
             <Field id="zzSelectionSeparator" type="separator"> </Field>
 
             <Field id="zzSelectionTitle" type="label" alignText="center">
-                <Label>Select Digital Input Device</Label>
+                <Label>Select Digital Input Device and GPIO Bit</Label>
             </Field>
 
 
@@ -904,7 +1107,8 @@ v0.5.9  10/12/2022  Add glitch filter option for built-in GPIO inputs.  Add a
             </Field>
 
 
-            <!-- ################## Device Configuration ################## -->
+            <!-- ##############     Digital Input Device     ############## -->
+            <!-- ##############   3. Device Configuration    ############## -->
 
 
              <!-- digitalInput configSeparator -->
@@ -919,7 +1123,7 @@ v0.5.9  10/12/2022  Add glitch filter option for built-in GPIO inputs.  Add a
             <!-- digitalInput invert -->
 
             <Field id="invert" type="checkbox" defaultValue="false">
-                <Label>Invert on/off State:</Label>
+                <Label>Invert On/Off State:</Label>
             </Field>
 
             <Field id="zzInvertLabel" type="label" fontSize="small"
@@ -982,7 +1186,8 @@ v0.5.9  10/12/2022  Add glitch filter option for built-in GPIO inputs.  Add a
             </Field>
 
 
-            <!-- ############# Interrupt and Filter Options ############## -->
+            <!-- ##############     Digital Input Device     ############## -->
+            <!-- ##############        4. Processing         ############## -->
 
 
              <!-- digitalInput interruptSeparator -->
@@ -1101,7 +1306,8 @@ v0.5.9  10/12/2022  Add glitch filter option for built-in GPIO inputs.  Add a
             </Field>
 
 
-            <!-- ############## Polling and Logging Options ############### -->
+            <!-- ############       Digital Input Device       ############ -->
+            <!-- ############      5. Polling and Logging      ############ -->
 
 
             <!-- digitalInput pollingSeparator -->
@@ -1151,6 +1357,8 @@ v0.5.9  10/12/2022  Add glitch filter option for built-in GPIO inputs.  Add a
 
 
         </ConfigUI>
+
+
     </Device>
 
 
@@ -1166,7 +1374,8 @@ v0.5.9  10/12/2022  Add glitch filter option for built-in GPIO inputs.  Add a
         <ConfigUI>
 
 
-            <!-- ################### Raspberry Pi Host #################### -->
+            <!-- ############       Digital Output Device      ############ -->
+            <!-- ############       1. Raspberry Pi Host       ############ -->
 
 
             <!-- digitalOutput hostTitle -->
@@ -1203,7 +1412,8 @@ v0.5.9  10/12/2022  Add glitch filter option for built-in GPIO inputs.  Add a
             </Field>
 
 
-            <!-- #################### Device Selection #################### -->
+            <!-- ############      Digital Output Device       ############ -->
+            <!-- ############  2. Device Type and Channel Id   ############ -->
 
 
              <!-- digitalOutput selectionSeparator -->
@@ -1211,7 +1421,7 @@ v0.5.9  10/12/2022  Add glitch filter option for built-in GPIO inputs.  Add a
             <Field id="zzSelectionSeparator" type="separator"> </Field>
 
             <Field id="zzSelectionTitle" type="label" alignText="center">
-                <Label>Select Digital Output Device</Label>
+                <Label>Select Digital Output Device and GPIO Bit / Relay</Label>
             </Field>
 
 
@@ -1378,7 +1588,8 @@ v0.5.9  10/12/2022  Add glitch filter option for built-in GPIO inputs.  Add a
             </Field>
 
 
-            <!-- ################## Device Configuration ################## -->
+            <!-- ##############     Digital Output Device    ############## -->
+            <!-- ##############   3. Device Configuration    ############## -->
 
 
             <!-- digitalOutput configSeparator -->
@@ -1444,7 +1655,8 @@ v0.5.9  10/12/2022  Add glitch filter option for built-in GPIO inputs.  Add a
             </Field>
 
 
-            <!-- #################### Logging Options ##################### -->
+            <!-- ############      Digital Output Device       ############ -->
+            <!-- ############      5. Polling and Logging      ############ -->
 
 
             <!-- digitalOutput loggingSeparator -->
@@ -1486,6 +1698,10 @@ v0.5.9  10/12/2022  Add glitch filter option for built-in GPIO inputs.  Add a
 
 
         </ConfigUI>
+
+
     </Device>
+
+
 </Devices>
 

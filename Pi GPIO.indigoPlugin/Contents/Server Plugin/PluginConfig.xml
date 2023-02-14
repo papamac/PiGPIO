@@ -115,7 +115,7 @@ v0.5.0  11/28/2021  Fully functional beta version with minimal documentation..
 
     <Field id="checkLabel" type="label" fontSize="small" fontColor="darkgray"
            alignWithControl="true">
-        <Label>Check SPI integrity by repeating each SPI device read.  Issue a warning if the the results of the consecutive reads differ.  If this occurs, it could be an indication that the SPI bit rate is too high for the device.</Label>
+        <Label>Check SPI integrity by repeating each SPI analog or digital device read.  Log a warning if consecutive reads differ (analog values differ by 1% or more).  If this occurs, it could be an indication that the SPI bit rate is too high for the device.</Label>
     </Field>
 
 </PluginConfig>

@@ -16,8 +16,8 @@ FUNCTION:  pigpioDevices.py provides classes to define and manage five
    USAGE:  pigpioDevices.py is included by the primary plugin class,
            Plugin.py.  Its methods are called as needed by Plugin.py methods.
   AUTHOR:  papamac
- VERSION:  0.6.1
-    DATE:  November 21, 2022
+ VERSION:  0.7.0
+    DATE:  February 14, 2023
 
 
 UNLICENSE:
@@ -108,6 +108,11 @@ v0.6.0  11/20/2022  Use properties in pluginProps and pluginPrefs directly
                     pigpio resource management to accurately maintain the
                     connection resource use counts.
 v0.6.1  11/21/2022  Improve efficiency in interrupt relay.
+v0.7.0   2/14/2023  (1) Implement common sensor value processing for both
+                    analog input and analog output devices.  Optionally enable
+                    sensor value percentage change detection, analog on/off
+                    thresholding, and limit checking.  (2) Fix a bug in the
+                    ADC12 class that failed to read ADC channels 4-7.
 """
 ###############################################################################
 #                                                                             #
@@ -117,8 +122,8 @@ v0.6.1  11/21/2022  Improve efficiency in interrupt relay.
 ###############################################################################
 
 __author__ = 'papamac'
-__version__ = '0.6.1'
-__date__ = '11/21/2022'
+__version__ = '0.7.0'
+__date__ = '2/14/2023'
 
 from abc import ABC, abstractmethod
 from datetime import datetime
@@ -127,7 +132,7 @@ from time import sleep
 import indigo
 import pigpio
 
-# Module constants and public data attributes:
+# Global constants and public data attributes:
 
 LOG = getLogger('Plugin')   # Use the same logger as the Indigo Plugin class.
 ON = 1                      # Constant for the on state.
@@ -136,6 +141,14 @@ ON_OFF = ('off', 'on')      # Text values for the onOffState.
 I2C = 'i2c'                 # Constant for an I2C interface.
 SPI = 'spi'                 # Constant for an SPI interface.
 GPIO = 'gpio'               # Constant for built-in GPIO.
+
+# Global display image selector tuple.
+# imageSelector = IMAGE[limitCheck][onOffState]
+
+IMAGE = ((indigo.kStateImageSel.SensorOff,  # Normal sensor off/on unless
+          indigo.kStateImageSel.SensorOn),  # limit check.
+         (indigo.kStateImageSel.SensorTripped,
+          indigo.kStateImageSel.SensorTripped))
 
 # Public dictionary of io device data.
 # IODEV_DATA[ioDevType] = (ioDevClass, interface):
@@ -267,8 +280,6 @@ class PiGPIODevice(ABC):
 
     I2CBUS = 1  # Primary i2c bus.
     SPIBUS = 0  # Primary spi bus.
-    IMAGE_SEL = (indigo.kStateImageSel.SensorOff,  # State image selectors.
-                 indigo.kStateImageSel.SensorOn)
 
     # Class dictionary:
 
@@ -307,9 +318,11 @@ class PiGPIODevice(ABC):
         self._interface = IODEV_DATA[self._ioDevType][1]
         self._managePigpioResources('get', self._interface)
 
-        # Set device state image.
+        # Set the initial device state image.
 
-        dev.updateStateImageOnServer(self.IMAGE_SEL[dev.onState])
+        limitFault = dev.states.get('limitFault', False)
+        onOffState = dev.states['onOffState']
+        dev.updateStateImageOnServer(IMAGE[limitFault][onOffState])
 
     def _managePigpioResources(self, action, resourceType):
         """
@@ -433,23 +446,6 @@ class PiGPIODevice(ABC):
                 LOG.debug('"%s" %s resource released %s',
                           self._dev.name, resourceType, resource)
 
-    def _getUiValue(self, value):
-        """
-        Generate a format string for the uiValue that shows 3 significant
-        digits over a wide range of values.  Return a uiValue based on the
-        format string and the object's units.
-        """
-        magnitude = abs(value)
-        if magnitude < 10:
-            uiFormat = '%.2f %s'
-        elif magnitude < 100:
-            uiFormat = '%.1f %s'
-        else:
-            uiFormat = '%i %s'
-
-        units = self._dev.pluginProps['units']
-        return uiFormat % (value, units)
-
     def _updateOnOffState(self, onOffState, logAll=True):
         """
         If the onOffState has changed, update it on the server and log it if
@@ -459,87 +455,122 @@ class PiGPIODevice(ABC):
         if onOffState != self._dev.states['onOffState']:
             self._dev.updateStateOnServer(key='onOffState', value=onOffState,
                                           clearErrorState=False)
-            self._dev.updateStateImageOnServer(self.IMAGE_SEL[onOffState])
+            limitFault = self._dev.states.get('limitFault', False)
+            self._dev.updateStateImageOnServer(IMAGE[limitFault][onOffState])
             if logAll is None:
                 return
-            LOG.info('"%s" update to %s', self._dev.name, ON_OFF[onOffState])
+            LOG.info('"%s" update onOffState to %s', self._dev.name,
+                     ON_OFF[onOffState])
         elif logAll:
-            LOG.info('"%s" is %s', self._dev.name, ON_OFF[onOffState])
+            LOG.info('"%s" onOffState is %s', self._dev.name,
+                     ON_OFF[onOffState])
 
     def _updateSensorValueStates(self, voltage, logAll=True):
         """
-        Compute the sensor value from the ADC voltage snd perform change
-        detection and limit checks.  Compute the uiValue and update all device
-        states on the server.  Log the sensor value if a change was detected or
-        if logAll is True.
+        Compute the sensor value from the ADC or DAC voltage.  Compute the
+        uiValue and update the sensorValue state on the server.  Optionally
+        perform sensor value percentage change detection, analog onOffState
+        thresholding, and limit checking.  Update states, log results, and
+        execute event triggers based on processing results.
         """
-        scalingFactor = float(self._dev.pluginProps['scaling'])
-        sensorValue = voltage * scalingFactor
+        def uiValue(value):
+            """
+            Generate a formatted text uiValue, consisting of a floating point
+            value and units, for use in the state display and limit fault
+            messages.
+            """
+            magnitude = abs(value)
+            if magnitude < 10:
+                uiFormat = '%.2f %s'  # uiValue format for small value.
+            elif magnitude < 100:
+                uiFormat = '%.1f %s'  # uiValue format for medium value.
+            else:
+                uiFormat = '%i %s'  # uiValue format for large value.
+            return uiFormat % (value, units)
 
-        # Detect a percentage change in the sensor value and update the server
-        # change detected state.
+        # Compute the sensorValue and uiValue from the ADC / DAC voltage and
+        # update the states on the server.
+
+        scalingFactor = float(self._dev.pluginProps['scalingFactor'])
+        sensorValue = voltage * scalingFactor
+        units = self._dev.pluginProps['units']
+        sensorUiValue = uiValue(sensorValue)
+        self._dev.updateStateOnServer(key='sensorValue', value=sensorValue,
+                                uiValue=sensorUiValue, clearErrorState=False)
+
+        # Compute the sensorValue percentage change and the changeDetected
+        # state value.  Update the changeDetected state on the server.  Log the
+        # sensorValue if a change is detected or if logAll is True.
 
         priorSensorValue = self._dev.states['sensorValue']
-        percentChange = 100.0 * abs((sensorValue - priorSensorValue)
-                        / priorSensorValue if priorSensorValue else 0.001)
-        changeThreshold = float(self._dev.pluginProps['changeThreshold'])
-        changeDetected = percentChange >= changeThreshold
+        percentChange = (100.0 * abs((sensorValue - priorSensorValue)
+            / priorSensorValue if priorSensorValue else 0.001))
+        changeThreshold = self._dev.pluginProps['changeThreshold']
+        changeDetected = (False if changeThreshold == 'None'
+                          else percentChange > float(changeThreshold))
         self._dev.updateStateOnServer(key='changeDetected',
                                       value=changeDetected)
-
-        # Perform low and high limit checks and update the limit fault states
-        # on the server.
-
-        event = None
-        units = self._dev.pluginProps['units']
-        lowLimitCheck = self._dev.pluginProps['lowLimitCheck']
-        if lowLimitCheck:
-            lowLimit = float(self._dev.pluginProps['lowLimit'])
-            lowFault = sensorValue < lowLimit
-            self._dev.updateStateOnServer(key='lowFault', value=lowFault)
-            if lowFault:
-                event = 'lowFault'
-                LOG.warning('"%s" low limit fault %.4f %s <  %.4f %s',
-                            self._dev.name, sensorValue, units, lowLimit,
-                            units)
-
-        highLimitCheck = self._dev.pluginProps['highLimitCheck']
-        if highLimitCheck:
-            highLimit = float(self._dev.pluginProps['highLimit'])
-            highFault = sensorValue > highLimit
-            self._dev.updateStateOnServer(key='highFault', value=highFault)
-            if highFault:  # It's OK, lowFault and highFault are exclusive.
-                event = 'highFault'
-                LOG.warning('"%s" high limit fault %.4f %s > %.4f %s',
-                            self._dev.name, sensorValue, units, highLimit,
-                            units)
-
-        # Update the state image to visually show limit check results and
-        # execute any triggers.
-
-        if lowLimitCheck or highLimitCheck:
-            if event:
-                executeEventTrigger('limitFault', event)
-                self._dev.updateStateImageOnServer(
-                          indigo.kStateImageSel.SensorTripped)
-            else:
-                self._dev.updateStateImageOnServer(
-                          indigo.kStateImageSel.SensorOn)
-        else:
-            self._dev.updateStateImageOnServer(indigo.kStateImageSel.SensorOff)
-
-        # Update the sensor value state and the uiValue.  Log the sensor value
-        # if a change was detected or if logAll=True.
-
-        uiValue = self._getUiValue(sensorValue)
-        self._dev.updateStateOnServer(key='sensorValue', value=sensorValue,
-                                      uiValue=uiValue, clearErrorState=False)
         if changeDetected:
-            LOG.info('"%s" update to %.4f %s',
+            LOG.info('"%s" update sensorValue to %.4f %s',
                      self._dev.name, sensorValue, units)
         elif logAll:
-            LOG.info('"%s" is %.4f %s',
+            LOG.info('"%s" sensorValue is %.4f %s',
                      self._dev.name, sensorValue, units)
+
+        # Determine the onOffState based on analog thresholding.  Update and
+        # log the onOffState.
+
+        onThreshold = self._dev.pluginProps['onThreshold']
+        onOffState = (OFF if onThreshold == 'None'
+                      else sensorValue > float(onThreshold))
+        self._updateOnOffState(onOffState, logAll=logAll)
+
+        # Perform limit checking and determine the limitFault state.  If the
+        # state has changed, update and process it.
+
+        lowLimit = self._dev.pluginProps['lowLimit']
+        if lowLimit == 'None':
+            lowLimit = 0.0
+            lowFault = False
+        else:
+            lowLimit = float(lowLimit)
+            lowFault = sensorValue < lowLimit
+
+        highLimit = self._dev.pluginProps['highLimit']
+        if highLimit == 'None':
+            highLimit = 0.0
+            highFault = False
+        else:
+            highLimit = float(highLimit)
+            highFault = sensorValue > highLimit
+
+        limitFault = lowFault or highFault
+
+        if limitFault != self._dev.states['limitFault']:  # State changed.
+            self._dev.updateStateOnServer(key='limitFault', value=limitFault)
+            self._dev.updateStateImageOnServer(IMAGE[limitFault][onOffState])
+
+            if limitFault:  # New limit fault detected.
+
+                # Generate a limit fault message, log it, update the server
+                # state/variable, and execute the limitFault event trigger.
+
+                lowMessage = ('"%s" low limit fault %s < %s'
+                        % (self._dev.name, sensorUiValue, uiValue(lowLimit)))
+                highMessage = ('"%s" high limit fault %s > %s'
+                        % (self._dev.name, sensorUiValue, uiValue(highLimit)))
+                limitFaultMessage = (lowMessage, highMessage)[highFault]
+                LOG.warning(limitFaultMessage)
+                self._dev.updateStateOnServer(key='limitFaultMessage',
+                                              value=limitFaultMessage)
+                var = indigo.variables.get('limitFaultMessage')
+                if var:  # Update existing variable.
+                    indigo.variable.updateValue('limitFaultMessage',
+                                                value=limitFaultMessage)
+                else:  # No existing variable; create a new one.
+                    indigo.variable.create('limitFaultMessage',
+                                           value=limitFaultMessage)
+                executeEventTrigger('limitFault', 'limitFault')
 
     # Abstract methods that must be included in all subclasses.
 
@@ -634,13 +665,12 @@ class ADC12(PiGPIODevice):
         inputConfiguration = int(dev.pluginProps['inputConfiguration'])
         adcChannel = int(self._dev.pluginProps['adcChannel'])
         self._data = (0x04 | inputConfiguration << 1 | adcChannel >> 2,
-                      adcChannel << 6, 0)
+                      (adcChannel << 6) & 0xff, 0)
         ioDevType = self._dev.pluginProps['ioDevType']
         if ioDevType == 'MCP3202':
             self._data = (0x01, inputConfiguration << 7 | adcChannel << 6, 0)
 
     def _read(self, logAll=True):  # Implementation of abstract method.
-
         referenceVoltage = float(self._dev.pluginProps['referenceVoltage'])
         nBytes1, bytes1 = self._pi.spi_xfer(self._handle, self._data)
         outputCode1 = (bytes1[1] & 0x0f) << 8 | bytes1[2]
@@ -657,9 +687,8 @@ class ADC12(PiGPIODevice):
                       self._dev.name, hexStr(self._data), nBytes2,
                       hexStr(bytes2), outputCode2, voltage2)
             percentChange = 100.0 * (abs((voltage1 - voltage2)
-                                         / voltage1 if voltage1 else 0.001))
-            changeThreshold = float(self._dev.pluginProps['changeThreshold'])
-            if percentChange >= changeThreshold:
+                            / voltage1 if voltage1 else 0.001))
+            if percentChange >= 1.0:
                 LOG.warning('"%s" spi check: different values on consecutive '
                             'reads %.4f %.4f',
                             self._dev.name, voltage1, voltage2)
@@ -773,7 +802,7 @@ class DAC12(PiGPIODevice):
 
         # Convert the sensorValue to a DAC input code and write to the DAC.
 
-        scalingFactor = float(self._dev.pluginProps['scaling'])
+        scalingFactor = float(self._dev.pluginProps['scalingFactor'])
         voltage = sensorValue / scalingFactor
         referenceVoltage = 2.048  # Internal reference voltage (volts).
         gain = int(self._dev.pluginProps['gain'])
@@ -793,11 +822,7 @@ class DAC12(PiGPIODevice):
 
         # Update and log the sensorValue state.
 
-        uiValue = self._getUiValue(sensorValue)
-        self._dev.updateStateOnServer(key='sensorValue', value=sensorValue,
-                                      uiValue=uiValue, clearErrorState=False)
-        units = self._dev.pluginProps['units']
-        LOG.info('"%s" update to %.4f %s', self._dev.name, sensorValue, units)
+        self._updateSensorValueStates(voltage)
 
 
 ###############################################################################

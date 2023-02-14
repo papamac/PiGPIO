@@ -17,8 +17,8 @@ FUNCTION:  Events.xml defines Pi GPIO events that may trigger specific indigo
            xml data to instantiate a trigger object per the indigo object model
            (IOM).
   AUTHOR:  papamac
- VERSION:  0.5.1
-    DATE:  March 28, 2022
+ VERSION:  0.7.0
+    DATE:  February 14, 2023
 
 
 CHANGE LOG:
@@ -29,6 +29,8 @@ individual module docstrings if appropriate.
 
 v0.5.0  11/28/2021  Fully functional beta version with minimal documentation.
 v0.5.3   3/28/2022  Change event field id's and add events for pigpio errors.
+v0.7.0   2/14/2023  Change separate low and high limit fault events to a single
+                    limit fault event.
 
 -->
 
@@ -40,7 +42,7 @@ v0.5.3   3/28/2022  Change event field id's and add events for pigpio errors.
         <ConfigUI>
 
             <Field id="triggerEvent" type="menu" defaultValue="any">
-                <Label>pigpio Error:</Label>
+                <Label>Pi GPIO Error:</Label>
                 <List>
                     <Option value="any">Any Pi GPIO Error</Option>
                     <Option value="connError">Connection Error</Option>
@@ -57,16 +59,11 @@ v0.5.3   3/28/2022  Change event field id's and add events for pigpio errors.
 
 
     <Event id="limitFault">
-        <Name>Limit Check Fault</Name>
+        <Name>Limit Fault</Name>
         <ConfigUI>
 
-            <Field id="triggerEvent" type="menu" defaultValue="anyFault">
-                <Label>Limit Check Fault:</Label>
-                <List>
-                    <Option value="any">Any Limit Fault</Option>
-                    <Option value="lowFault">Low Limit Fault</Option>
-                    <Option value="highFault">High Limit Fault</Option>
-                </List>
+            <Field id="triggerEvent" type="textfield" hidden="true"
+                   defaultValue="limitFault">
             </Field>
 
         </ConfigUI>

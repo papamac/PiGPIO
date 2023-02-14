@@ -16,8 +16,8 @@ FUNCTION:  plugin.py defines the Plugin class, with standard methods that
    USAGE:  plugin.py is included in the Pi GPIO.indigoPlugin bundle and its
            methods are called by the Indigo server.
   AUTHOR:  papamac
- VERSION:  0.6.0
-    DATE:  November 20, 2022
+ VERSION:  0.7.0
+    DATE:  February 14, 2023
 
 
 UNLICENSE:
@@ -109,6 +109,11 @@ v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
 v0.5.9  10/12/2022  Add glitch filter option for built-in GPIO inputs.
 v0.6.0  11/20/2022  Use properties in pluginProps and pluginPrefs directly
                     without duplicating them as ioDev instance objects.
+v0.7.0   2/14/2023  (1) Update the device ConfigUi validation for new/changed
+                    fields in Devices.xml.  (2) Implement display state
+                    selection for analog input and analog output devices.
+                    (3) Add callback methods for analog output turnOn/turnOff
+                    actions.
 """
 ###############################################################################
 #                                                                             #
@@ -118,8 +123,8 @@ v0.6.0  11/20/2022  Use properties in pluginProps and pluginPrefs directly
 ###############################################################################
 
 __author__ = 'papamac'
-__version__ = '0.6.0'
-__date__ = '11/20/2022'
+__version__ = '0.7.0'
+__date__ = '2/14/2023'
 
 from logging import getLogger, NOTSET
 
@@ -141,7 +146,14 @@ OFF = 0  # Constant for the off state.
 
 class Plugin(indigo.PluginBase):
     """
-    **************************** needs work ***********************************
+    The Plugin class is a collection of standard Indigo plugin methods that are
+    needed to manage multiple door opener devices.  It is segmented into four
+    parts for readability:
+
+    I   STANDARD INDIGO INITIALIZATION, STARTUP, AND RUN/STOP METHODS,
+    II  CONFIG UI VALIDATION METHODS,
+    III CONFIG UI CALLBACK METHODS, and
+    IV  ACTION CALLBACK METHODS
     """
 
     ###########################################################################
@@ -162,14 +174,12 @@ class Plugin(indigo.PluginBase):
     #              pluginPrefs):                                              #
     # def __del__(self)                                                       #
     # def startup(self)                                                       #
+    # def didDeviceCommPropertyChange(oldDev, newDev)                         #
     # def deviceStartComm(dev)                                                #
     # def deviceStopComm(dev)                                                 #
-    # def didDeviceCommPropertyChange(oldDev, newDev)                         #
     # def runConcurrentThread(self)                                           #
     #                                                                         #
     ###########################################################################
-
-    # Internal methods:
 
     def __init__(self, pluginId, pluginDisplayName,
                  pluginVersion, pluginPrefs):
@@ -180,24 +190,20 @@ class Plugin(indigo.PluginBase):
         LOG.threaddebug('__del__ called')
         indigo.PluginBase.__del__(self)
 
-    # Indigo plugin.py standard public instance methods:
-
     def startup(self):
         self.indigo_log_handler.setLevel(NOTSET)
         level = self.pluginPrefs['loggingLevel']
         LOG.setLevel('THREADDEBUG' if level == 'THREAD' else level)
         LOG.threaddebug('startup called')
 
-    def deviceStartComm(self, dev):
-        LOG.threaddebug('deviceStartComm called "%s"', dev.name)
-        pigpioDevices.start(self, dev)
-
     @staticmethod
-    def deviceStopComm(dev):
-        LOG.threaddebug('deviceStopComm called "%s"', dev.name)
-        ioDev = pigpioDevices.ioDevices.get(dev.id)
-        if ioDev:
-            ioDev.stop()
+    def getDeviceDisplayStateId(dev):
+        LOG.threaddebug('getDeviceDisplayStateId called "%s"', dev.name)
+        displayStateId = 'onOffState'
+        if dev.deviceTypeId in ('analogInput', 'analogOutput'):
+            dsid = dev.pluginProps.get('displayStateId')
+            displayStateId = dsid if dsid else 'sensorValue'
+        return displayStateId
 
     @staticmethod
     def didDeviceCommPropertyChange(oldDev, newDev):
@@ -212,6 +218,18 @@ class Plugin(indigo.PluginBase):
         devChanged = (oldDev.pluginProps != newDev.pluginProps
                       or oldDev.name != newDev.name)
         return devChanged
+
+    def deviceStartComm(self, dev):
+        LOG.threaddebug('deviceStartComm called "%s"', dev.name)
+        dev.stateListOrDisplayStateIdChanged()
+        pigpioDevices.start(self, dev)
+
+    @staticmethod
+    def deviceStopComm(dev):
+        LOG.threaddebug('deviceStopComm called "%s"', dev.name)
+        ioDev = pigpioDevices.ioDevices.get(dev.id)
+        if ioDev:
+            ioDev.stop()
 
     def runConcurrentThread(self):
         LOG.threaddebug('runConcurrentThread called')
@@ -326,48 +344,71 @@ class Plugin(indigo.PluginBase):
 
         # Validation of properties for specific typeIds:
 
-        if typeId == 'analogInput':
+        if typeId in ('analogInput', 'analogOutput'):
 
             try:  # Check scaling factor.
-                float(valuesDict['scaling'])
+                float(valuesDict['scalingFactor'])
             except ValueError:
-                errors['scaling'] = 'Scaling Factor must be a number.'
+                errors['scalingFactor'] = 'Scaling factor must be a number.'
 
-            try:  # Check changeThreshold.
-                changeThreshold = float(valuesDict['changeThreshold'])
-            except ValueError:
-                error = 'Change Threshold must be a number.'
-                errors['changeThreshold'] = error
-            else:
-                if changeThreshold < 0.0:
-                    error = 'Change Threshold must be non-negative.'
+            textField = valuesDict['changeThreshold']  # Check changeThreshold.
+            if textField != 'None':
+                try:
+                    changeThreshold = float(textField)
+                except ValueError:
+                    error = 'Change Threshold must be a number or None.'
                     errors['changeThreshold'] = error
+                else:
+                    if changeThreshold < 0.0:
+                        error = 'Change Threshold must be non-negative.'
+                        errors['changeThreshold'] = error
+
+            textField = valuesDict['onThreshold']  # Check onThreshold.
+            if textField != 'None':
+                try:
+                    float(textField)
+                except ValueError:
+                    errors['onThreshold'] = ('On threshold must be a number '
+                                             'or None.')
 
             lowLimit = highLimit = None
-            try:  # Check lowLimit.
-                lowLimit = float(valuesDict['lowLimit'])
-            except ValueError:
-                errors['lowLimit'] = 'Low Limit must be a number.'
+            textField = valuesDict['lowLimit']  # Check lowLimit.
+            if textField != 'None':
+                try:
+                    lowLimit = float(textField)
+                except ValueError:
+                    errors['lowLimit'] = 'Low Limit must be a number or None.'
 
-            try:  # Check highLimit.
-                highLimit = float(valuesDict['highLimit'])
-            except ValueError:
-                errors['highLimit'] = 'High Limit must be a number.'
+            textField = valuesDict['highLimit']  # Check highLimit.
+            if textField != 'None':
+                try:  # Check highLimit.
+                    highLimit = float(textField)
+                except ValueError:
+                    errors['highLimit'] = ('High Limit must be a number or '
+                                           'None.')
 
-            # When both are specified, check for lowLimit < highLimit.
-            if (valuesDict['lowLimitCheck'] and lowLimit
-                    and valuesDict['highLimitCheck'] and highLimit
-                    and lowLimit > highLimit):
+            if lowLimit and highLimit and lowLimit > highLimit:
                 error = 'Low limit must be less than high limit.'
                 errors['lowLimit'] = error
                 errors['highLimit'] = error
 
         elif typeId == 'analogOutput':
 
-            try:  # Check scaling factor.
-                float(valuesDict['scaling'])
-            except ValueError:
-                errors['scaling'] = 'Scaling Factor must be a number.'
+            textField = valuesDict['turnOnValue']  # Check turnOnValue.
+            if textField != 'None':
+                try:
+                    float(textField)
+                except ValueError:
+                    errors['turnOnValue'] = ('Turn on value must be a number '
+                                             'or None.')
+
+            textField = valuesDict['turnOffValue']  # Check turnOffValue.
+            if textField != 'None':
+                try:
+                    float(textField)
+                except ValueError:
+                    errors['turnOffValue'] = ('Turn off value must be a '
+                                              'number or None.')
 
         elif typeId == 'digitalInput':
 
@@ -550,6 +591,8 @@ class Plugin(indigo.PluginBase):
     #                         ACTION CALLBACK METHODS                         #
     #                                                                         #
     # def read(pluginAction)                                                  #
+    # def turnOn(pluginAction)                                                #
+    # def turnOff(pluginAction)                                               #
     # def write(pluginAction)                                                 #
     # def actionControlDevice(self, action, dev)                              #
     # def actionControlUniversal(self, action, dev)                           #
@@ -565,6 +608,43 @@ class Plugin(indigo.PluginBase):
             ioDev.read()
 
     @staticmethod
+    def turnOn(pluginAction):
+        dev = indigo.devices[pluginAction.deviceId]
+        LOG.threaddebug('turnOn called "%s"', dev.name)
+        if dev.deviceTypeId == 'analogOutput':
+            turnOnValue = dev.pluginProps['turnOnValue']
+            if turnOnValue == 'None':
+                LOG.warning('"%s" turn on sensor value not specified; '
+                            'turnOn action ignored.', dev.name)
+                return
+        elif dev.deviceTypeId == 'digitalOutput':
+            turnOnValue = ON
+        else:
+            return
+        ioDev = pigpioDevices.ioDevices.get(dev.id)
+        if ioDev:
+            ioDev.write(turnOnValue)
+
+    @staticmethod
+    def turnOff(pluginAction):
+        dev = indigo.devices[pluginAction.deviceId]
+        LOG.threaddebug('turnOff called "%s"', dev.name)
+        if dev.deviceTypeId == 'analogOutput':
+            turnOffValue = dev.pluginProps['turnOffValue']
+            if turnOffValue == 'None':
+                LOG.warning('"%s" turn off sensor value not specified; '
+                            'turnOff action ignored.', dev.name)
+                return
+            turnOffValue = float(turnOffValue)
+        elif dev.deviceTypeId == 'digitalOutput':
+            turnOffValue = OFF
+        else:
+            return
+        ioDev = pigpioDevices.ioDevices.get(dev.id)
+        if ioDev:
+            ioDev.write(turnOffValue)
+
+    @staticmethod
     def write(pluginAction):
         dev = indigo.devices[pluginAction.deviceId]
         LOG.threaddebug('write called "%s"', dev.name)
@@ -578,16 +658,17 @@ class Plugin(indigo.PluginBase):
         LOG.threaddebug('actionControlDevice called "%s"', dev.name)
         if dev.deviceTypeId == 'digitalOutput':
             if action.deviceAction == indigo.kDeviceAction.TurnOn:
-                bit = ON
+                value = ON
             elif action.deviceAction == indigo.kDeviceAction.TurnOff:
-                bit = OFF
+                value = OFF
             elif action.deviceAction == indigo.kDeviceAction.Toggle:
-                bit = OFF if dev.onState else ON
+                value = OFF if dev.onState else ON
             else:
                 return
-            ioDev = pigpioDevices.ioDevices.get(dev.id)
-            if ioDev:
-                ioDev.write(bit)
+
+        ioDev = pigpioDevices.ioDevices.get(dev.id)
+        if ioDev:
+            ioDev.write(value)
 
     def actionControlUniversal(self, action, dev):
         LOG.threaddebug('actionControlUniversal called "%s"', dev.name)
