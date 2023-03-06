@@ -16,8 +16,8 @@ FUNCTION:  plugin.py defines the Plugin class, with standard methods that
    USAGE:  plugin.py is included in the Pi GPIO.indigoPlugin bundle and its
            methods are called by the Indigo server.
   AUTHOR:  papamac
- VERSION:  0.7.0
-    DATE:  February 14, 2023
+ VERSION:  0.7.2
+    DATE:  March 5, 2023
 
 
 UNLICENSE:
@@ -110,31 +110,38 @@ v0.5.9  10/12/2022  Add glitch filter option for built-in GPIO inputs.
 v0.6.0  11/20/2022  Use properties in pluginProps and pluginPrefs directly
                     without duplicating them as ioDev instance objects.
 v0.7.0   2/14/2023  (1) Update the device ConfigUi validation for new/changed
-                    fields in Devices.xml.  (2) Implement display state
-                    selection for analog input and analog output devices.
+                    fields in Devices.xml.
+                    (2) Implement display state selection for analog input and
+                    analog output devices.
                     (3) Add callback methods for analog output turnOn/turnOff
                     actions.
+v0.7.2    3/5/2023  (1) Refactor and simplify code for pigpio resource
+                    management, exception management, and interrupt processing.
+                    (2) Add conditional logging by message type.
 """
 ###############################################################################
 #                                                                             #
 #                             MODULE plugin.py                                #
-#                       DUNDERS, IMPORTS, AND GLOBALS                         #
+#                   DUNDERS, IMPORTS, and GLOBAL Constants                    #
 #                                                                             #
 ###############################################################################
 
 __author__ = 'papamac'
-__version__ = '0.7.0'
-__date__ = '2/14/2023'
+__version__ = '0.7.2'
+__date__ = '3/5/2023'
 
-from logging import getLogger, NOTSET
+from logging import NOTSET, getLogger
 
 import indigo
-import pigpio
-import pigpioDevices
 
-LOG = getLogger('Plugin')  # Standard logger
-ON = 1   # Constant for the on state.
-OFF = 0  # Constant for the off state.
+import conditionalLogging
+from conditionalLogging import LI
+import pigpio
+from pigpioDevices import I2C, SPI, IODEV_DATA
+from pigpioDevices import ioDevices, ioDevCounts, resources, start
+
+L = getLogger('Plugin')    # Standard logger
+ON, OFF = (1, 0)           # on/off states.
 
 
 ###############################################################################
@@ -187,22 +194,38 @@ class Plugin(indigo.PluginBase):
                                    pluginVersion, pluginPrefs)
 
     def __del__(self):
-        LOG.threaddebug('__del__ called')
+        L.threaddebug('__del__ called')
         indigo.PluginBase.__del__(self)
 
     def startup(self):
+
+        # Set logging level.
+
         self.indigo_log_handler.setLevel(NOTSET)
         level = self.pluginPrefs['loggingLevel']
-        LOG.setLevel('THREADDEBUG' if level == 'THREAD' else level)
-        LOG.threaddebug('startup called')
+        L.setLevel('THREADDEBUG' if level == 'THREAD' else level)
+        L.threaddebug('startup called')
+
+        # Set the LOGGING_MESSAGE_TYPES list in the conditionalLogging module.
+
+        lmt =  [item for item in self.pluginPrefs['loggingMessageTypes']]
+        conditionalLogging.LOGGING_MESSAGE_TYPES = lmt
+
+        # Delete interrupt devices list in pluginProps.
+
+        for dev in indigo.devices.iter('self'):
+            if dev.pluginProps.get('interruptDevices'):
+                props = dev.pluginProps
+                del props['interruptDevices']
+                dev.replacePluginPropsOnServer(props)
 
     @staticmethod
     def getDeviceDisplayStateId(dev):
-        LOG.threaddebug('getDeviceDisplayStateId called "%s"', dev.name)
+        L.threaddebug('getDeviceDisplayStateId called "%s"', dev.name)
         displayStateId = 'onOffState'
         if dev.deviceTypeId in ('analogInput', 'analogOutput'):
-            dsid = dev.pluginProps.get('displayStateId')
-            displayStateId = dsid if dsid else 'sensorValue'
+            dsId = dev.pluginProps.get('displayStateId')
+            displayStateId = dsId if dsId else 'sensorValue'
         return displayStateId
 
     @staticmethod
@@ -220,25 +243,63 @@ class Plugin(indigo.PluginBase):
         return devChanged
 
     def deviceStartComm(self, dev):
-        LOG.threaddebug('deviceStartComm called "%s"', dev.name)
+        L.threaddebug('deviceStartComm called "%s"', dev.name)
         dev.stateListOrDisplayStateIdChanged()
-        pigpioDevices.start(self, dev)
+        start(self, dev)
 
     @staticmethod
     def deviceStopComm(dev):
-        LOG.threaddebug('deviceStopComm called "%s"', dev.name)
-        ioDev = pigpioDevices.ioDevices.get(dev.id)
+        L.threaddebug('deviceStopComm called "%s"', dev.name)
+        ioDev = ioDevices.get(dev.id)
         if ioDev:
             ioDev.stop()
 
     def runConcurrentThread(self):
-        LOG.threaddebug('runConcurrentThread called')
+        L.threaddebug('runConcurrentThread called')
+
+        # Summarize and log the numbers of pigpio devices started.
+
+        LI.startStop('')
+        LI.startStop('pigpio device startup summary:')
+        LI.startStop('raspi host  total  gpio  i2c   spi')
+        allPi = 3 * [0]
+        for piId in ioDevCounts:
+            piTot = sum(ioDevCounts[piId])
+            LI.startStop('%10s   %3i   %3i   %3i   %3i', piId, piTot,
+                         *ioDevCounts[piId])
+            allPi = list(map(sum, zip(allPi, ioDevCounts[piId], strict=True)))
+        allTot = sum(allPi)
+        LI.startStop('%10s   %3i   %3i   %3i   %3i', 'totals', allTot, *allPi)
+        LI.startStop('')
+
+        # Commence io device polling.
+
         while True:
             for dev in indigo.devices.iter('self'):
-                ioDev = pigpioDevices.ioDevices.get(dev.id)
+                ioDev = ioDevices.get(dev.id)
                 if ioDev:
                     ioDev.poll()
             self.sleep(float(self.pluginPrefs['runLoopSleepTime']))
+
+    @staticmethod
+    def shutdown():
+        L.threaddebug('shutdown called')
+
+        # Log shutdown status of pigpio devices.
+
+        if ioDevices:
+            L.warning('%s pigpio devices still active at shutdown',
+                      len(ioDevices))
+        else:
+            LI.startStop('All pigpio devices stopped')
+
+        # Log shutdown status of pigpiod resources.
+
+        if resources:
+            L.warning('%s pigpiod resources still assigned/open at shutdown',
+                      len(resources))
+        else:
+            LI.startStop('All pigpiod resources stopped/closed')
 
     ###########################################################################
     #                                                                         #
@@ -261,14 +322,18 @@ class Plugin(indigo.PluginBase):
 
     @staticmethod
     def validatePrefsConfigUi(valuesDict):
-        LOG.threaddebug('validatePrefsConfigUi called')
+        L.threaddebug('validatePrefsConfigUi called')
         errors = indigo.Dict()
 
         # Set logging level.
 
         loggingLevel = valuesDict['loggingLevel']
-        LOG.setLevel('THREADDEBUG' if loggingLevel == 'THREAD'
-                     else loggingLevel)
+        L.setLevel('THREADDEBUG' if loggingLevel == 'THREAD' else loggingLevel)
+
+        # Set the LOGGING_MESSAGE_TYPES list in the conditionalLogging module.
+
+        lmt = [item for item in valuesDict['loggingMessageTypes']]
+        conditionalLogging.LOGGING_MESSAGE_TYPES = lmt
 
         # Validate status interval and run loop sleep time.
 
@@ -297,12 +362,12 @@ class Plugin(indigo.PluginBase):
     @staticmethod
     def validateDeviceConfigUi(valuesDict, typeId, devId):
         dev = indigo.devices[devId]
-        LOG.threaddebug('validateDeviceConfigUi called "%s"; '
-                        'configured = %s', dev.name, dev.configured)
+        L.threaddebug('validateDeviceConfigUi called "%s"; configured = %s',
+                      dev.name, dev.configured)
         errors = indigo.Dict()
 
         ioDevType = valuesDict['ioDevType']
-        ioDevInterface = pigpioDevices.IODEV_DATA[ioDevType][1]
+        interface = IODEV_DATA[ioDevType][1]
 
         # Validation of common properties for all device types:
 
@@ -333,7 +398,7 @@ class Plugin(indigo.PluginBase):
 
         # Validation of properties for SPI devices:
 
-        if ioDevInterface is pigpioDevices.SPI:
+        if interface is SPI:
             try:  # Check bitRate.
                 bitRate = float(valuesDict['bitRate'])
             except ValueError:
@@ -469,7 +534,7 @@ class Plugin(indigo.PluginBase):
 
         else:  # No errors so far; continue processing.
 
-            # Compute the host id.
+            # Compute the host id if one is not entered.
 
             hostId = valuesDict['hostId']
             if not hostId:
@@ -479,6 +544,7 @@ class Plugin(indigo.PluginBase):
                     hostId = split2[-1]
                 else:
                     hostId = 'pi'
+                valuesDict['hostId'] = hostId
 
             # Incrementally build the device address string.
 
@@ -486,14 +552,14 @@ class Plugin(indigo.PluginBase):
             if ioDevType == 'pigpio':  # gpio device.
                 address += '.g' + valuesDict['gpioNumber']
             else:
-                if ioDevInterface is pigpioDevices.I2C:  # i2c device.
+                if interface is I2C:  # i2c device.
                     i2cAddress = valuesDict['i2cAddress8']
                     if ioDevType == 'dkrPiRly':
                         i2cAddress = valuesDict['i2cAddress4']
                     valuesDict['i2cAddress'] = i2cAddress
                     address += '.i' + i2cAddress[2:]
 
-                elif ioDevInterface is pigpioDevices.SPI:  # spi device.
+                elif interface is SPI:  # spi device.
                     address += '.s' + valuesDict['spiChannel']
                     if 'S' in ioDevType:
                         spiDevAddress4 = valuesDict['spiDevAddress4']
@@ -545,7 +611,7 @@ class Plugin(indigo.PluginBase):
                         return False, valuesDict, errors
             else:
                 valuesDict['address'] = address  # address is unique.
-                LOG.debug(valuesDict)
+                L.debug(valuesDict)
                 return True, valuesDict
 
     ###########################################################################
@@ -602,60 +668,60 @@ class Plugin(indigo.PluginBase):
     @staticmethod
     def read(pluginAction):
         dev = indigo.devices[pluginAction.deviceId]
-        LOG.threaddebug('read called "%s"', dev.name)
-        ioDev = pigpioDevices.ioDevices.get(dev.id)
+        L.threaddebug('read called "%s"', dev.name)
+        ioDev = ioDevices.get(dev.id)
         if ioDev:
             ioDev.read()
 
     @staticmethod
     def turnOn(pluginAction):
         dev = indigo.devices[pluginAction.deviceId]
-        LOG.threaddebug('turnOn called "%s"', dev.name)
+        L.threaddebug('turnOn called "%s"', dev.name)
         if dev.deviceTypeId == 'analogOutput':
             turnOnValue = dev.pluginProps['turnOnValue']
             if turnOnValue == 'None':
-                LOG.warning('"%s" turn on sensor value not specified; '
-                            'turnOn action ignored.', dev.name)
+                L.warning('"%s" turn on sensor value not specified; '
+                          'turnOn action ignored.', dev.name)
                 return
         elif dev.deviceTypeId == 'digitalOutput':
             turnOnValue = ON
         else:
             return
-        ioDev = pigpioDevices.ioDevices.get(dev.id)
+        ioDev = ioDevices.get(dev.id)
         if ioDev:
             ioDev.write(turnOnValue)
 
     @staticmethod
     def turnOff(pluginAction):
         dev = indigo.devices[pluginAction.deviceId]
-        LOG.threaddebug('turnOff called "%s"', dev.name)
+        L.threaddebug('turnOff called "%s"', dev.name)
         if dev.deviceTypeId == 'analogOutput':
             turnOffValue = dev.pluginProps['turnOffValue']
             if turnOffValue == 'None':
-                LOG.warning('"%s" turn off sensor value not specified; '
-                            'turnOff action ignored.', dev.name)
+                L.warning('"%s" turn off sensor value not specified; '
+                          'turnOff action ignored.', dev.name)
                 return
             turnOffValue = float(turnOffValue)
         elif dev.deviceTypeId == 'digitalOutput':
             turnOffValue = OFF
         else:
             return
-        ioDev = pigpioDevices.ioDevices.get(dev.id)
+        ioDev = ioDevices.get(dev.id)
         if ioDev:
             ioDev.write(turnOffValue)
 
     @staticmethod
     def write(pluginAction):
         dev = indigo.devices[pluginAction.deviceId]
-        LOG.threaddebug('write called "%s"', dev.name)
+        L.threaddebug('write called "%s"', dev.name)
         if dev.deviceTypeId in ('analogOutput', 'digitalOutput'):
             value = pluginAction.props['value']
-            ioDev = pigpioDevices.ioDevices.get(dev.id)
+            ioDev = ioDevices.get(dev.id)
             if ioDev:
                 ioDev.write(value)
 
     def actionControlDevice(self, action, dev):
-        LOG.threaddebug('actionControlDevice called "%s"', dev.name)
+        L.threaddebug('actionControlDevice called "%s"', dev.name)
         if dev.deviceTypeId == 'digitalOutput':
             if action.deviceAction == indigo.kDeviceAction.TurnOn:
                 value = ON
@@ -666,13 +732,13 @@ class Plugin(indigo.PluginBase):
             else:
                 return
 
-        ioDev = pigpioDevices.ioDevices.get(dev.id)
-        if ioDev:
-            ioDev.write(value)
+            ioDev = ioDevices.get(dev.id)
+            if ioDev:
+                ioDev.write(value)
 
     def actionControlUniversal(self, action, dev):
-        LOG.threaddebug('actionControlUniversal called "%s"', dev.name)
+        L.threaddebug('actionControlUniversal called "%s"', dev.name)
         if action.deviceAction == indigo.kUniversalAction.RequestStatus:
-            ioDev = pigpioDevices.ioDevices.get(dev.id)
+            ioDev = ioDevices.get(dev.id)
             if ioDev:
                 ioDev.read()

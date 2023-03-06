@@ -111,7 +111,7 @@ v0.7.0   2/14/2023  (1) Implement common sensor value processing for both
 
             <Field id="zzHostIdLabel" type="label" fontSize="small"
                    fontColor="darkgray" alignWithControl="true">
-                <Label>The Host Id is a unique code used to identify the host in the indigo device address.  It may be user specified or left blank for automatic assignment. Automatically assigned id's are extracted from the host FQDN ("name-id.domainName"), or simply set to "pi".</Label>
+                <Label>The Host Id is a short, unique code that is used to compactly identify the host in Indigo.  It may be user specified or left blank for automatic assignment. Automatically assigned id's are extracted from the host FQDN ("name-id.domainName"), or simply set to "pi".</Label>
             </Field>
 
 
@@ -570,7 +570,7 @@ v0.7.0   2/14/2023  (1) Implement common sensor value processing for both
 
             <Field id="zzHostIdLabel" type="label" fontSize="small"
                    fontColor="darkgray" alignWithControl="true">
-                <Label>The Host Id is a unique code used to identify the host in the indigo device address.  It may be user specified or left blank for automatic assignment. Automatically assigned id's are extracted from the host FQDN ("name-id.domainName"), or simply set to "pi".</Label>
+                <Label>The Host Id is a short, unique code that is used to compactly identify the host in Indigo.  It may be user specified or left blank for automatic assignment. Automatically assigned id's are extracted from the host FQDN ("name-id.domainName"), or simply set to "pi".</Label>
             </Field>
 
 
@@ -951,7 +951,7 @@ v0.7.0   2/14/2023  (1) Implement common sensor value processing for both
 
             <Field id="zzHostIdLabel" type="label" fontSize="small"
                    fontColor="darkgray" alignWithControl="true">
-                <Label>The Host Id is a unique code used to identify the host in the indigo device address.  It may be user specified or left blank for automatic assignment. Automatically assigned id's are extracted from the host FQDN ("name-id.domainName"), or simply set to "pi".</Label>
+                <Label>The Host Id is a short, unique code that is used to compactly identify the host in Indigo.  It may be user specified or left blank for automatic assignment. Automatically assigned id's are extracted from the host FQDN ("name-id.domainName"), or simply set to "pi".</Label>
             </Field>
 
 
@@ -1408,7 +1408,7 @@ v0.7.0   2/14/2023  (1) Implement common sensor value processing for both
 
             <Field id="zzHostIdLabel" type="label" fontSize="small"
                    fontColor="darkgray" alignWithControl="true">
-                <Label>The Host Id is a unique code used to identify the host in the indigo device address.  It may be user specified or left blank for automatic assignment. Automatically assigned id's are extracted from the host FQDN ("name-id.domainName"), or simply set to "pi".</Label>
+                <Label>The Host Id is a short, unique code that is used to compactly identify the host in Indigo.  It may be user specified or left blank for automatic assignment. Automatically assigned id's are extracted from the host FQDN ("name-id.domainName"), or simply set to "pi".</Label>
             </Field>
 
 

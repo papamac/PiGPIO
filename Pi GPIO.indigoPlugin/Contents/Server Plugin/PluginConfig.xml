@@ -10,8 +10,8 @@ FUNCTION:  PluginConfig.xml defines plugin preferences, specifies ConfigUis,
            that is accessed as needed by plugin methods to select processing
            options.
   AUTHOR:  papamac
- VERSION:  0.5.0
-    DATE:  November 28, 2021
+ VERSION:  0.7.2
+    DATE:  March 5, 2023
 
 CHANGE LOG:
 
@@ -20,7 +20,7 @@ top level PiGPIO folder.  Changes of lesser importance may be described in
 individual module docstrings if appropriate.
 
 v0.5.0  11/28/2021  Fully functional beta version with minimal documentation..
-
+v0.7.2    3/5/2023  Add conditional logging by message type.
 -->
 
 <PluginConfig>
@@ -72,6 +72,32 @@ v0.5.0  11/28/2021  Fully functional beta version with minimal documentation..
            visibleBindingId="loggingLevel" visibleBindingValue="CRITICAL">
         <Label>Log Critical Messages Only</Label>
     </Field>
+
+
+    <!-- ############## Conditional Logging by Message Type ############### -->
+
+
+    <Field id="loggingMessageTypes" type="list" defaultValue="false"
+           visibleBindingId="loggingLevel"
+           visibleBindingValue="(THREAD, DEBUG, INFO)">
+        <Label>Logging Message Types:</Label>
+        <List>
+            <Option value="analog">Analog Device Debug Messages</Option>
+            <Option value="digital">Digital Device Debug Messages</Option>
+            <Option value="resource">pigpiod Resource Management Debug Messages</Option>
+            <Option value="startStop">Starting/Stopping Debug and Info Messages</Option>
+        </List>
+    </Field>
+
+    <Field id="loggingTypesLabel" type="label" fontSize="small"
+           fontColor="darkgray" alignWithControl="true"
+           visibleBindingId="loggingLevel"
+           visibleBindingValue="(THREAD, DEBUG, INFO)">
+        <Label>Limit logging by selecting one or more message types for debug and info logging levels.  Thread debug, warning, error, and critical messages will always be logged.</Label>
+    </Field>
+
+
+    <!-- ####################### Status Monitoring ######################## -->
 
 
     <Field id="monitorStatus" type="checkbox" defaultValue="false">
