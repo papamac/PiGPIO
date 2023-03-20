@@ -11,8 +11,8 @@ FUNCTION:  Devices.xml defines Pi GPIO device objects, specifies ConfigUis, and
            (IOM).  The device object includes a pluginProps dictionary that
            contains the device properties from the xml fields.
   AUTHOR:  papamac
- VERSION:  0.7.0
-    DATE:  February 14, 2023
+ VERSION:  0.8.0
+    DATE:  March 20, 2023
 
 DESCRIPTION:
 
@@ -59,6 +59,10 @@ v0.7.0   2/14/2023  (1) Implement common sensor value processing for both
                         onOffState,
                         limitFault,
                         and limitFaultMessage.
+v0.8.0   3/20/2023  Change the device types for analog input and analog output
+                    devices from custom types back to sensor and relay types
+                    respectively.  Remove the onOffState from the states
+                    specification for these devices
 -->
 
 
@@ -72,14 +76,13 @@ v0.7.0   2/14/2023  (1) Implement common sensor value processing for both
     <!-- ################################################################## -->
 
 
-    <Device id="analogInput" type="custom">
+    <Device id="analogInput" type="sensor">
         <Name>Analog Input</Name>
         <ConfigUI>
 
 
             <!-- ############       Analog Input Device        ############ -->
             <!-- ############      1. Raspberry Pi Host        ############ -->
-
 
             <!-- analogInput hostTitle -->
 
@@ -477,18 +480,9 @@ v0.7.0   2/14/2023  (1) Implement common sensor value processing for both
 
             <State id="sensorValue">
                 <ValueType>Number</ValueType>
-                <TriggerLabel>Sensor Value Change Detected</TriggerLabel>
-				<ControlPageLabel>Sensor Value Change Detected</ControlPageLabel>
+                <TriggerLabel>Sensor Value</TriggerLabel>
+				<ControlPageLabel>Sensor Value</ControlPageLabel>
             </State>
-
-
-            <!-- analogInput onOffState -->
-
-            <State id="onOffState">
-				<ValueType boolType="OnOff">Boolean</ValueType>
-				<TriggerLabel>OnOff State</TriggerLabel>
-				<ControlPageLabel>OnOff State</ControlPageLabel>
-			</State>
 
 
             <!-- analogInput changeDetected -->
@@ -531,7 +525,7 @@ v0.7.0   2/14/2023  (1) Implement common sensor value processing for both
     <!-- ################################################################## -->
 
 
-    <Device id="analogOutput" type="custom">
+    <Device id="analogOutput" type="relay">
         <Name>Analog Output</Name>
         <ConfigUI>
 
@@ -619,11 +613,13 @@ v0.7.0   2/14/2023  (1) Implement common sensor value processing for both
 
             <Field id="dacChannel1" type="textfield" defaultValue="0"
                    hidden="true"
-                   visibleBindingId="ioDevType" visibleBindingValue="(MCP4801, MCP4811, MCP4821)">
+                   visibleBindingId="ioDevType"
+                   visibleBindingValue="(MCP4801, MCP4811, MCP4821)">
             </Field>
 
             <Field id="dacChannel2" type="menu" defaultValue="0"
-                   visibleBindingId="ioDevType" visibleBindingValue="(MCP4802, MCP4812, MCP4822)">
+                   visibleBindingId="ioDevType"
+                   visibleBindingValue="(MCP4802, MCP4812, MCP4822)">
                 <Label>DAC Channel:</Label>
                 <List>
                     <Option value="0">Channel 0 (Output A)</Option>
@@ -858,18 +854,9 @@ v0.7.0   2/14/2023  (1) Implement common sensor value processing for both
 
             <State id="sensorValue">
                 <ValueType>Number</ValueType>
-                <TriggerLabel>Sensor Value Change Detected</TriggerLabel>
-				<ControlPageLabel>Sensor Value Change Detected</ControlPageLabel>
+                <TriggerLabel>Sensor Value</TriggerLabel>
+				<ControlPageLabel>Sensor Value</ControlPageLabel>
             </State>
-
-
-            <!-- analogOutput onOffState -->
-
-            <State id="onOffState">
-				<ValueType boolType="OnOff">Boolean</ValueType>
-				<TriggerLabel>OnOff State</TriggerLabel>
-				<ControlPageLabel>OnOff State</ControlPageLabel>
-			</State>
 
 
             <!-- analogOutput changeDetected -->
@@ -1694,7 +1681,8 @@ v0.7.0   2/14/2023  (1) Implement common sensor value processing for both
             <!-- digitalOutput logAll -->
 
             <Field id="logAll" type="checkbox" defaultValue="true"
-                   hidden="true"> </Field>
+                   hidden="true">
+            </Field>
 
 
         </ConfigUI>

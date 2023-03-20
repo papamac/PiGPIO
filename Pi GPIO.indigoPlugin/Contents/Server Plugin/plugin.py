@@ -16,8 +16,8 @@ FUNCTION:  plugin.py defines the Plugin class, with standard methods that
    USAGE:  plugin.py is included in the Pi GPIO.indigoPlugin bundle and its
            methods are called by the Indigo server.
   AUTHOR:  papamac
- VERSION:  0.7.2
-    DATE:  March 5, 2023
+ VERSION:  0.8.0
+    DATE:  March 20, 2023
 
 
 UNLICENSE:
@@ -118,6 +118,14 @@ v0.7.0   2/14/2023  (1) Update the device ConfigUi validation for new/changed
 v0.7.2    3/5/2023  (1) Refactor and simplify code for pigpio resource
                     management, exception management, and interrupt processing.
                     (2) Add conditional logging by message type.
+v0.8.0   3/20/2023  (1) Change the device types for analog input and analog
+                    output devices from custom types back to sensor and relay
+                    types respectively.  Remove code to change the display
+                    state id for custom devices.
+                    (2) Add a callback method for the analog/digital output
+                    toggle actions.
+                    (3) Refactor/simplify all the action callback methods.
+
 """
 ###############################################################################
 #                                                                             #
@@ -127,8 +135,8 @@ v0.7.2    3/5/2023  (1) Refactor and simplify code for pigpio resource
 ###############################################################################
 
 __author__ = 'papamac'
-__version__ = '0.7.2'
-__date__ = '3/5/2023'
+__version__ = '0.8.0'
+__date__ = '3/20/2023'
 
 from logging import NOTSET, getLogger
 
@@ -220,15 +228,6 @@ class Plugin(indigo.PluginBase):
                 dev.replacePluginPropsOnServer(props)
 
     @staticmethod
-    def getDeviceDisplayStateId(dev):
-        L.threaddebug('getDeviceDisplayStateId called "%s"', dev.name)
-        displayStateId = 'onOffState'
-        if dev.deviceTypeId in ('analogInput', 'analogOutput'):
-            dsId = dev.pluginProps.get('displayStateId')
-            displayStateId = dsId if dsId else 'sensorValue'
-        return displayStateId
-
-    @staticmethod
     def didDeviceCommPropertyChange(oldDev, newDev):
         """
         By default, changing a device's plugin properties causes the Indigo
@@ -244,7 +243,6 @@ class Plugin(indigo.PluginBase):
 
     def deviceStartComm(self, dev):
         L.threaddebug('deviceStartComm called "%s"', dev.name)
-        dev.stateListOrDisplayStateIdChanged()
         start(self, dev)
 
     @staticmethod
@@ -659,6 +657,7 @@ class Plugin(indigo.PluginBase):
     # def read(pluginAction)                                                  #
     # def turnOn(pluginAction)                                                #
     # def turnOff(pluginAction)                                               #
+    # def toggle(self, pluginAction)                                          #
     # def write(pluginAction)                                                 #
     # def actionControlDevice(self, action, dev)                              #
     # def actionControlUniversal(self, action, dev)                           #
@@ -677,6 +676,7 @@ class Plugin(indigo.PluginBase):
     def turnOn(pluginAction):
         dev = indigo.devices[pluginAction.deviceId]
         L.threaddebug('turnOn called "%s"', dev.name)
+
         if dev.deviceTypeId == 'analogOutput':
             turnOnValue = dev.pluginProps['turnOnValue']
             if turnOnValue == 'None':
@@ -686,7 +686,10 @@ class Plugin(indigo.PluginBase):
         elif dev.deviceTypeId == 'digitalOutput':
             turnOnValue = ON
         else:
+            L.warning('"%s" attempt to write to an input device; action '
+                      'ignored', dev.name)
             return
+
         ioDev = ioDevices.get(dev.id)
         if ioDev:
             ioDev.write(turnOnValue)
@@ -695,6 +698,7 @@ class Plugin(indigo.PluginBase):
     def turnOff(pluginAction):
         dev = indigo.devices[pluginAction.deviceId]
         L.threaddebug('turnOff called "%s"', dev.name)
+
         if dev.deviceTypeId == 'analogOutput':
             turnOffValue = dev.pluginProps['turnOffValue']
             if turnOffValue == 'None':
@@ -705,40 +709,53 @@ class Plugin(indigo.PluginBase):
         elif dev.deviceTypeId == 'digitalOutput':
             turnOffValue = OFF
         else:
+            L.warning('"%s" attempt to write to an input device; action '
+                      'ignored', dev.name)
             return
+
         ioDev = ioDevices.get(dev.id)
         if ioDev:
             ioDev.write(turnOffValue)
+
+    def toggle(self, pluginAction):
+        dev = indigo.devices[pluginAction.deviceId]
+        L.threaddebug('toggle called "%s"', dev.name)
+        (self.turnOff(pluginAction) if dev.states['onOffState']
+         else self.turnOn(pluginAction))
 
     @staticmethod
     def write(pluginAction):
         dev = indigo.devices[pluginAction.deviceId]
         L.threaddebug('write called "%s"', dev.name)
+
         if dev.deviceTypeId in ('analogOutput', 'digitalOutput'):
             value = pluginAction.props['value']
+
             ioDev = ioDevices.get(dev.id)
             if ioDev:
                 ioDev.write(value)
+        else:
+            L.warning('"%s" attempt to write to an input device; action '
+                      'ignored', dev.name)
 
     def actionControlDevice(self, action, dev):
         L.threaddebug('actionControlDevice called "%s"', dev.name)
-        if dev.deviceTypeId == 'digitalOutput':
-            if action.deviceAction == indigo.kDeviceAction.TurnOn:
-                value = ON
-            elif action.deviceAction == indigo.kDeviceAction.TurnOff:
-                value = OFF
-            elif action.deviceAction == indigo.kDeviceAction.Toggle:
-                value = OFF if dev.onState else ON
-            else:
-                return
 
-            ioDev = ioDevices.get(dev.id)
-            if ioDev:
-                ioDev.write(value)
+        class pluginAction:
+            deviceId = dev.id
+
+        if action.deviceAction == indigo.kDeviceAction.TurnOn:
+            self.turnOn(pluginAction)
+        elif action.deviceAction == indigo.kDeviceAction.TurnOff:
+            self.turnOff(pluginAction)
+        elif action.deviceAction == indigo.kDeviceAction.Toggle:
+            self.toggle(pluginAction)
 
     def actionControlUniversal(self, action, dev):
         L.threaddebug('actionControlUniversal called "%s"', dev.name)
         if action.deviceAction == indigo.kUniversalAction.RequestStatus:
-            ioDev = ioDevices.get(dev.id)
-            if ioDev:
-                ioDev.read()
+
+            class pluginAction:
+                deviceId = dev.id
+
+            self.read(pluginAction)

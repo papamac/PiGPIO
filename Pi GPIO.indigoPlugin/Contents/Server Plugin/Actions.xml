@@ -8,8 +8,8 @@ FUNCTION:  Actions.xml defines PiGPIO action objects and specifies action
    USAGE:  Actions.xml is read and interpreted by the indigo server during
            plugin startup.
  AUTHORS:  papamac
- VERSION:  0.7.0
-    DATE:  February 14, 2023
+ VERSION:  0.8.0
+    DATE:  February 20, 2023
 
 CHANGE LOG:
 
@@ -18,8 +18,9 @@ top level PiGPIO folder.  Changes of lesser importance may be described in
 individual module docstrings if appropriate.
 
 v0.5.0  11/28/2021  Fully functional beta version with minimal documentation.
-v0.7.0   2/14/2023  Add turnOn/turnOff device actions for analog output
+v0.7.0   2/14/2023  Add turnOn/turnOff device actions for analog/digital output
                     devices.
+v0.8.0   3/20/2023  Add a device action for analog/digital output toggle.
 -->
 
 <Actions>
@@ -34,16 +35,6 @@ v0.7.0   2/14/2023  Add turnOn/turnOff device actions for analog output
 	</Action>
 
 
-	<Action id="turnOn" uiPath="DeviceActions" deviceFilter="self">
-		<Name>Turn On</Name>
-		<CallbackMethod>turnOn</CallbackMethod>
-	</Action>
-
-	<Action id="turnOff" uiPath="DeviceActions" deviceFilter="self">
-		<Name>Turn Off</Name>
-		<CallbackMethod>turnOff</CallbackMethod>
-	</Action>
-
 	<Action id="write" uiPath="DeviceActions" deviceFilter="self">
 		<Name>Write</Name>
 		<CallbackMethod>write</CallbackMethod>
@@ -54,6 +45,27 @@ v0.7.0   2/14/2023  Add turnOn/turnOff device actions for analog output
 			</Field>
 
 		</ConfigUI>
+	</Action>
+
+
+	<!-- ########## TurnOn/TurnOff/Toggle Analog/Digital Outputs ########## -->
+
+
+	<Action id="turnOn" uiPath="DeviceActions" deviceFilter="self">
+		<Name>Turn On</Name>
+		<CallbackMethod>turnOn</CallbackMethod>
+	</Action>
+
+
+	<Action id="turnOff" uiPath="DeviceActions" deviceFilter="self">
+		<Name>Turn Off</Name>
+		<CallbackMethod>turnOff</CallbackMethod>
+	</Action>
+
+
+	<Action id="toggle" uiPath="DeviceActions" deviceFilter="self">
+		<Name>Toggle</Name>
+		<CallbackMethod>toggle</CallbackMethod>
 	</Action>
 
 

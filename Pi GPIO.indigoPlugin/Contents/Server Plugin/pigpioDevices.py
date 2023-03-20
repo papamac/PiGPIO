@@ -16,8 +16,8 @@ FUNCTION:  pigpioDevices.py provides classes to define and manage five
    USAGE:  pigpioDevices.py is included by the primary plugin class,
            Plugin.py.  Its methods are called as needed by Plugin.py methods.
   AUTHOR:  papamac
- VERSION:  0.7.2
-    DATE:  March 5, 2023
+ VERSION:  0.8.0
+    DATE:  March 20, 2023
 
 
 
@@ -113,12 +113,24 @@ v0.7.0   2/14/2023  (1) Implement common sensor value processing for both
                     analog input and analog output devices.  Optionally enable
                     sensor value percentage change detection, analog on/off
                     thresholding, and limit checking.
-                    (2) Fix a bug in the ADC12 class that failed to read ADC
+                    (2) Change the device types for analog input and analog
+                    output devices to custom to enable optional selection of
+                    the display state id for analog devices.
+                    (3) Fix a bug in the ADC12 class that failed to read ADC
                     channels 4-7.
 v0.7.1   2/15/2023  Simplify code for SPI integrity checks.
 v0.7.2    3/5/2023  (1) Refactor and simplify code for pigpio resource
                     management, exception management, and interrupt processing.
                     (2) Add conditional logging by message type.
+v0.8.0   3/20/2023  Change the device types for analog input and analog output
+                    devices from custom types back to sensor and relay types
+                    respectively.  Let these devices retain their native
+                    display state id (onOffState), but allow the user to select
+                    the apparent display state by manipulating the onOffState
+                    uiValue.  This has the advantage of retaining the device
+                    controls in the Indigo Home Window that are not available
+                    for custom devices.
+
 
 TO DO:
 
@@ -134,8 +146,8 @@ TO DO:
 ###############################################################################
 
 __author__ = 'papamac'
-__version__ = '0.7.2'
-__date__ = '3/5/2023'
+__version__ = '0.8.0'
+__date__ = '3/20/2023'
 
 from abc import ABC, abstractmethod
 from datetime import datetime
@@ -158,13 +170,11 @@ IF = ('gpio', 'i2c-', 'spi-')  # Interface text values.
 I2CBUS = 1                     # Primary i2c bus.
 SPIBUS = 0                     # Primary spi bus.
 
-# Global display image selector tuple indexed by limitCheck/onOffState states.
-# IMAGE[limitCheck][onOffState] = indigo image selector enumeration value
+# Global display image selector tuple indexed by the onOffState state.
+# IMAGE_SEL[onOffState] = indigo image selector enumeration value
 
-IMAGE = ((indigo.kStateImageSel.SensorOff,  # Normal sensor off/on unless
-          indigo.kStateImageSel.SensorOn),  # limit check.
-         (indigo.kStateImageSel.SensorTripped,
-          indigo.kStateImageSel.SensorTripped))
+IMAGE_SEL = (indigo.kStateImageSel.SensorOff,  # Normal sensor off/on
+             indigo.kStateImageSel.SensorOn)
 
 # Global public dictionary of io device data keyed by io device type:
 # IODEV_DATA[ioDevType] = (ioDevClass, interface)
@@ -271,11 +281,11 @@ def pigpioFatalError(dev, error, errorMessage, limitTriggers=True):
     """
     Perform the following standard functions for a fatal device error:
 
-    1.  Log the error on the indigo log.
-    2.  Indicate the error on the indigo home display by changing the device
+    1.  Log the error on the Indigo log.
+    2.  Indicate the error in the Indigo Home Window by changing the device
         error state and setting the text to red.
     3.  Executing an event trigger to invoke other actions, if any, by the
-        indigo server.
+        Indigo server.
     4.  Stopping the io device to disable any future use until it has been
         manually restarted or the plugin has been reloaded.
     """
@@ -347,7 +357,7 @@ class PiGPIODevice(ABC):
         resource is in the dictionary, a new one is allocated, assigned to the
         device, and added to the dictionary with a use count of 1.
 
-        When an io device is stopped by an io error or an indigo devStopComm
+        When an io device is stopped by an io error or an Indigo devStopComm
         call, a 'release' call to this method will decrement the use count for
         an existing resource.  If the use count becomes zero the resource is
         removed from the dictionary and de-allocated in the pigpio daemon.
@@ -385,7 +395,7 @@ class PiGPIODevice(ABC):
 
         ioDevices[dev.id] = self
 
-        # Save private references to the indigo plugin and device objects.
+        # Save private references to the Indigo plugin and device objects.
 
         self._plugin = plugin
         self._dev = dev
@@ -459,35 +469,36 @@ class PiGPIODevice(ABC):
         # Set the initial device state image to override power icon defaults
         # for digital output devices.
 
-        limitFault = dev.states.get('limitFault', False)
         onOffState = dev.states['onOffState']
-        dev.updateStateImageOnServer(IMAGE[limitFault][onOffState])
+        dev.updateStateImageOnServer(IMAGE_SEL[onOffState])
 
-    def _updateOnOffState(self, onOffState, logAll=True):
+    def _updateOnOffState(self, onOffState, sensorUiValue=None, logAll=True):
         """
-        If the onOffState has changed, update it on the server and log it if
-        logAll is not None.  If there is no change, log the unchanged state if
-        logAll is True.
+        Update the onOffState for an analog or digital device on the Indigo
+        server along with a user selected uiValue.  Log the onOffState if it
+        has changed and logAll is not None.  If there is no change, log the
+        unchanged state if logAll is True.
         """
-        if onOffState != self._dev.states['onOffState']:
-            self._dev.updateStateOnServer(key='onOffState', value=onOffState,
-                                          clearErrorState=False)
-            limitFault = self._dev.states.get('limitFault', False)
-            self._dev.updateStateImageOnServer(IMAGE[limitFault][onOffState])
-            if logAll is None:
-                return
-            L.info('"%s" update onOffState to %s', self._dev.name,
-                   ON_OFF[onOffState])
+        onOffUiValue = ON_OFF[onOffState]
+        displayStateId = self._dev.pluginProps.get('displayStateId')
+        uiValue = (sensorUiValue if displayStateId == 'sensorValue'
+                   else onOffUiValue)
+        self._dev.updateStateOnServer(key='onOffState', value=onOffState,
+                                      uiValue=uiValue, clearErrorState=False)
+        self._dev.updateStateImageOnServer(IMAGE_SEL[onOffState])
+
+        onOffText = onOffUiValue
+        onOffText += (' <' + sensorUiValue + '>' if sensorUiValue else '')
+        if onOffState != self._dev.states['onOffState'] and logAll is not None:
+            L.info('"%s" update onOffState to %s', self._dev.name, onOffText)
         elif logAll:
-            L.info('"%s" onOffState is %s', self._dev.name,
-                   ON_OFF[onOffState])
+            L.info('"%s" onOffState is %s', self._dev.name, onOffText)
 
     @staticmethod
     def _uiValue(value, units):
         """
         Generate a formatted text uiValue, consisting of a floating point
-        value and units, for use in the state display and limit fault
-        messages.
+        value and units, for use in the state display and limit fault messages.
         """
         magnitude = abs(value)
         if magnitude < 10:
@@ -495,7 +506,7 @@ class PiGPIODevice(ABC):
         elif magnitude < 100:
             uiFormat = '%.1f %s'  # uiValue format for medium value.
         else:
-            uiFormat = '%i %s'  # uiValue format for large value.
+            uiFormat = '%i %s'    # uiValue format for large value.
         return uiFormat % (value, units)
 
     def _updateSensorValueStates(self, voltage, logAll=True):
@@ -514,7 +525,7 @@ class PiGPIODevice(ABC):
         units = self._dev.pluginProps['units']
         sensorUiValue = self._uiValue(sensorValue, units)
         self._dev.updateStateOnServer(key='sensorValue', value=sensorValue,
-                                uiValue=sensorUiValue, clearErrorState=False)
+                            uiValue=sensorUiValue, clearErrorState=False)
 
         # Compute the sensorValue percentage change and the changeDetected
         # state value.  Update the changeDetected state on the server.  Log the
@@ -528,7 +539,7 @@ class PiGPIODevice(ABC):
                           else percentChange > float(changeThreshold))
         self._dev.updateStateOnServer(key='changeDetected',
                                       value=changeDetected)
-        if changeDetected:
+        if changeDetected and logAll is not None:
             L.info('"%s" update sensorValue to %.4f %s',
                    self._dev.name, sensorValue, units)
         elif logAll:
@@ -541,7 +552,8 @@ class PiGPIODevice(ABC):
         onThreshold = self._dev.pluginProps['onThreshold']
         onOffState = (OFF if onThreshold == 'None'
                       else sensorValue > float(onThreshold))
-        self._updateOnOffState(onOffState, logAll=logAll)
+        self._updateOnOffState(onOffState, sensorUiValue=sensorUiValue,
+                               logAll=logAll)
 
         # Perform limit checking and determine the limitFault state.  If the
         # state has changed, update and process it.
@@ -566,12 +578,14 @@ class PiGPIODevice(ABC):
 
         if limitFault != self._dev.states['limitFault']:  # State changed.
             self._dev.updateStateOnServer(key='limitFault', value=limitFault)
-            self._dev.updateStateImageOnServer(IMAGE[limitFault][onOffState])
-
             if limitFault:  # New limit fault detected.
 
-                # Generate a limit fault message, log it, update the server
-                # state/variable, and execute the limitFault event trigger.
+                # Set the display image, generate and log a limit fault
+                # message, update the server state/variable, and execute the
+                # limitFault event trigger.
+
+                self._dev.updateStateImageOnServer(
+                    indigo.kStateImageSel.SensorTripped)
 
                 lowUiLimit = self._uiValue(lowLimit, units)
                 lowMessage = ('"%s" low limit fault %s < %s'
@@ -581,6 +595,7 @@ class PiGPIODevice(ABC):
                         % (self._dev.name, sensorUiValue, highUiLimit))
                 limitFaultMessage = (lowMessage, highMessage)[highFault]
                 L.warning(limitFaultMessage)
+
                 self._dev.updateStateOnServer(key='limitFaultMessage',
                                               value=limitFaultMessage)
                 var = indigo.variables.get('limitFaultMessage')
@@ -590,6 +605,7 @@ class PiGPIODevice(ABC):
                 else:  # No existing variable; create a new one.
                     indigo.variable.create('limitFaultMessage',
                                            value=limitFaultMessage)
+
                 executeEventTrigger('limitFault', 'limitFault')
 
     # Abstract methods that must be included in all subclasses.

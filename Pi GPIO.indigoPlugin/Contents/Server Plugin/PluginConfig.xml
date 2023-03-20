@@ -77,10 +77,10 @@ v0.7.2    3/5/2023  Add conditional logging by message type.
     <!-- ############## Conditional Logging by Message Type ############### -->
 
 
-    <Field id="loggingMessageTypes" type="list" defaultValue="false"
+    <Field id="loggingMessageTypes" type="list"
            visibleBindingId="loggingLevel"
            visibleBindingValue="(THREAD, DEBUG, INFO)">
-        <Label>Logging Message Types:</Label>
+        <Label>Optional Logging Message Types:</Label>
         <List>
             <Option value="analog">Analog Device Debug Messages</Option>
             <Option value="digital">Digital Device Debug Messages</Option>
@@ -93,7 +93,7 @@ v0.7.2    3/5/2023  Add conditional logging by message type.
            fontColor="darkgray" alignWithControl="true"
            visibleBindingId="loggingLevel"
            visibleBindingValue="(THREAD, DEBUG, INFO)">
-        <Label>Limit logging by selecting one or more message types for debug and info logging levels.  Thread debug, warning, error, and critical messages will always be logged.</Label>
+        <Label>Customize logging by selecting/excluding optional message types.  Conditional logging by message type applies to debug and info logging levels only.</Label>
     </Field>
 
 
@@ -125,7 +125,7 @@ v0.7.2    3/5/2023  Add conditional logging by message type.
     </Field>
 
 
-    <Field id="runLoopSleepTime" type="textfield" defaultValue="0.1">
+    <Field id="runLoopSleepTime" type="textfield" defaultValue="1.0">
         <Label>Run Loop Sleep Time (seconds):</Label>
     </Field>
 
