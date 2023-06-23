@@ -23,7 +23,6 @@ FUNCTION:  conditionalLogging.py
  VERSION:  0.7.2
     DATE:  March 5, 2023
 
-
 UNLICENSE:
 
 This is free and unencumbered software released into the public domain.
@@ -51,7 +50,6 @@ OTHER DEALINGS IN THE SOFTWARE.
 
 For more information, please refer to <http://unlicense.org/>
 
-
 Pi GPIO SUMMARY DESCRIPTION:
 
 Raspberry Pi is a powerful credit card sized computer with extensive General
@@ -75,11 +73,9 @@ RPi GPIO system :   <https://www.raspberrypi.com/documentation/computers
 pigpio library:     <https://abyz.me.uk/rpi/pigpio/>
 pigpio code:        <https://github.com/joan2937/pigpio/>
 
-
 DEPENDENCIES/LIMITATIONS:
 
 ****************************** needs work *************************************
-
 
 CHANGE LOG:
 

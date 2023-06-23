@@ -17,9 +17,8 @@ FUNCTION:  Events.xml defines Pi GPIO events that may trigger specific indigo
            xml data to instantiate a trigger object per the indigo object model
            (IOM).
   AUTHOR:  papamac
- VERSION:  0.7.0
-    DATE:  February 14, 2023
-
+ VERSION:  0.9.1
+    DATE:  June 17, 2023
 
 CHANGE LOG:
 
@@ -31,40 +30,59 @@ v0.5.0  11/28/2021  Fully functional beta version with minimal documentation.
 v0.5.3   3/28/2022  Change event field id's and add events for pigpio errors.
 v0.7.0   2/14/2023  Change separate low and high limit fault events to a single
                     limit fault event.
+v0.9.1   6/17/2023  Remove the stop triggerEvent from the pigpioError event
+                    type.  Capitalize names for other trigger events.
 -->
 
 <Events>
 
+    <!-- ################################################################## -->
+    <!-- #                                                                # -->
+    <!-- #                        Pi GPIO Error                           # -->
+    <!-- #                                                                # -->
+    <!-- ################################################################## -->
 
     <Event id="pigpioError">
-        <Name>pigpio Error</Name>
+        <Name>Pi GPIO Error</Name>
         <ConfigUI>
 
-            <Field id="triggerEvent" type="menu" defaultValue="any">
+            <!-- pigpioError triggerEvent -->
+
+            <Field id="triggerEvent" type="menu" defaultValue="anyError">
                 <Label>Pi GPIO Error:</Label>
                 <List>
                     <Option value="any">Any Pi GPIO Error</Option>
-                    <Option value="connError">Connection Error</Option>
-                    <Option value="startError">Start Error</Option>
-                    <Option value="stopError">Stop Error</Option>
-                    <Option value="readError">Read Error</Option>
-                    <Option value="writeError">Write Error</Option>
-                    <Option value="intError">Interrupt Error</Option>
+                    <Option value="CONNECTION ERROR">Connection Error</Option>
+                    <Option value="START ERROR">Start Error</Option>
+                    <Option value="READ ERROR">Read Error</Option>
+                    <Option value="WRITE ERROR">Write Error</Option>
+                    <Option value="INTERRUPT ERROR">Interrupt Error</Option>
                 </List>
             </Field>
-
         </ConfigUI>
     </Event>
 
+    <!-- ################################################################## -->
+    <!-- #                                                                # -->
+    <!-- #                         Limit Fault                            # -->
+    <!-- #                                                                # -->
+    <!-- ################################################################## -->
 
     <Event id="limitFault">
         <Name>Limit Fault</Name>
         <ConfigUI>
 
-            <Field id="triggerEvent" type="textfield" hidden="true"
-                   defaultValue="limitFault">
-            </Field>
+            <!-- limitFault triggerEvent -->
 
+            <Field id="triggerEvent" type="menu" defaultValue="anyLimitFault">
+                <Label>Limit Fault:</Label>
+                <List>
+                    <Option value="any">Any Limit Fault</Option>
+                    <Option value="low limit fault">Low Limit Fault</Option>
+                    <Option value="high limit fault">High Limit Fault</Option>
+                </List>
+            </Field>
         </ConfigUI>
     </Event>
+
 </Events>

@@ -19,7 +19,6 @@ FUNCTION:  pigpio.py is a library of Python classes and methods that interfaces
     DATE:  March 2, 2021
   SOURCE:  This module was copied from https://github.com/joan2937/pigpio
 
-
 UNLICENSE:
 
 This is free and unencumbered software released into the public domain.
@@ -46,7 +45,6 @@ ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 OTHER DEALINGS IN THE SOFTWARE.
 
 For more information, please refer to <http://unlicense.org/>
-
 
 DESCRIPTION:
 

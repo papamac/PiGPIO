@@ -25,48 +25,38 @@ v0.8.0   3/20/2023  Add a device action for analog/digital output toggle.
 
 <Actions>
 
-
 	<!-- ############ Read/Write Analog/Digital Inputs/Outputs ############ -->
-
 
 	<Action id="read" uiPath="DeviceActions" deviceFilter="self">
 		<Name>Read</Name>
 		<CallbackMethod>read</CallbackMethod>
 	</Action>
 
-
 	<Action id="write" uiPath="DeviceActions" deviceFilter="self">
 		<Name>Write</Name>
 		<CallbackMethod>write</CallbackMethod>
 		<ConfigUI>
-
 			<Field id="value" type="textfield">
 				<Label>Enter Numeric Value:</Label>
 			</Field>
-
 		</ConfigUI>
 	</Action>
 
-
 	<!-- ########## TurnOn/TurnOff/Toggle Analog/Digital Outputs ########## -->
-
 
 	<Action id="turnOn" uiPath="DeviceActions" deviceFilter="self">
 		<Name>Turn On</Name>
 		<CallbackMethod>turnOn</CallbackMethod>
 	</Action>
 
-
 	<Action id="turnOff" uiPath="DeviceActions" deviceFilter="self">
 		<Name>Turn Off</Name>
 		<CallbackMethod>turnOff</CallbackMethod>
 	</Action>
 
-
 	<Action id="toggle" uiPath="DeviceActions" deviceFilter="self">
 		<Name>Toggle</Name>
 		<CallbackMethod>toggle</CallbackMethod>
 	</Action>
-
 
 </Actions>

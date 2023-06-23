@@ -11,25 +11,24 @@ FUNCTION:  Devices.xml defines Pi GPIO device objects, specifies ConfigUis, and
            (IOM).  The device object includes a pluginProps dictionary that
            contains the device properties from the xml fields.
   AUTHOR:  papamac
- VERSION:  0.8.0
-    DATE:  March 20, 2023
+ VERSION:  0.9.1
+    DATE:  June 17, 2023
 
 DESCRIPTION:
 
-This xml file contains ConfigUI descriptions for four devices: analogInput,
-analogOutput, digitalInput, and digitalOutput.  Each ConfigUI is organized
-into the following groups of fields and states:
+This xml file contains ConfigUI and States descriptions for four devices:
+analogInput, analogOutput, digitalInput, and digitalOutput.  Each ConfigUI is
+organized into the following groups of fields:
 
 1. Raspberry Pi Host
 2. Device Type and Channel Id
 3. Device Configuration
 4. Processing
 5. Polling and Logging
-6. States
 
 Many of the field id's are repeated in the four device ConfigUIs.  For ease in
 locating the correct one, fields are commented with the device type and field
-id.
+id.  Custom states for the analog devices follow the ConfigUIs.
 
 CHANGE LOG:
 
@@ -59,15 +58,20 @@ v0.7.0   2/14/2023  (1) Implement common sensor value processing for both
                         onOffState,
                         limitFault,
                         and limitFaultMessage.
-v0.8.0   3/20/2023  Change the device types for analog input and analog output
-                    devices from custom types back to sensor and relay types
-                    respectively.  Remove the onOffState from the states
-                    specification for these devices
+v0.8.0   3/20/2023  (1) Change the device types for analog input and analog
+                    output devices from custom types back to sensor and relay
+                    types respectively.  Remove the onOffState from the states
+                    specification for these devices.
+                    (2) Change spacing and commenting in Devices.xml.
+v0.8.1   5/13/2023  (1) Add spi bitRate field for MCP3202 device.
+                    (2) Change spi bitRate units from kb/s to Mb/s.
+v0.9.0    6/8/2023  Add checkSPI, status monitoring, and statusInterval fields
+                    to each device ConfigIU.
+v0.9.1   6/17/2023  Delete the limitFaultMessage field from the analogInput
+                    and analogOutput devices.
 -->
 
-
 <Devices>
-
 
     <!-- ################################################################## -->
     <!-- #                                                                # -->
@@ -75,63 +79,53 @@ v0.8.0   3/20/2023  Change the device types for analog input and analog output
     <!-- #                                                                # -->
     <!-- ################################################################## -->
 
-
     <Device id="analogInput" type="sensor">
         <Name>Analog Input</Name>
         <ConfigUI>
 
+            <!-- ############      analogInput ConfigUI       ############# -->
+            <!-- ############      1. Raspberry Pi Host       ############# -->
 
-            <!-- ############       Analog Input Device        ############ -->
-            <!-- ############      1. Raspberry Pi Host        ############ -->
-
-            <!-- analogInput hostTitle -->
+            <!-- analogInput ConfigUI hostTitle -->
 
             <Field id="zzHostTitle" type="label" alignText="center">
                 <Label>Select Raspberry Pi Host</Label>
             </Field>
 
-
-            <!-- analogInput hostAddress -->
+            <!-- analogInput ConfigUI hostAddress -->
 
             <Field id="hostAddress" type="textfield"
                    defaultValue="raspi4b-io.local">
                 <Label>Host Address (FQDN or IPv4):</Label>
             </Field>
 
-
-            <!-- analogInput portNumber -->
+            <!-- analogInput ConfigUI portNumber -->
 
             <Field id="portNumber" type="textfield" defaultValue="8888">
                 <Label>Port Number (1024-65535):</Label>
             </Field>
 
-
-            <!-- analogInput hostId -->
+            <!-- analogInput ConfigUI hostId -->
 
             <Field id="hostId" type="textfield" defaultValue="">
                 <Label>Host Id:</Label>
             </Field>
-
             <Field id="zzHostIdLabel" type="label" fontSize="small"
-                   fontColor="darkgray" alignWithControl="true">
-                <Label>The Host Id is a short, unique code that is used to compactly identify the host in Indigo.  It may be user specified or left blank for automatic assignment. Automatically assigned id's are extracted from the host FQDN ("name-id.domainName"), or simply set to "pi".</Label>
+                   fontColor="darkgray" alignText="center">
+                <Label>The Host Id is a short, unique code that is used to compactly identify the host.  It may be user specified or automatically assigned from the FQDN (name-id.domainName).</Label>
             </Field>
 
-
-            <!-- ############       Analog Input Device        ############ -->
+            <!-- ############      analogInput ConfigUI        ############ -->
             <!-- ############  2. Device Type and Channel Id   ############ -->
 
-
-            <!-- analogInput selectionSeparator -->
+            <!-- analogInput ConfigUI selectionSeparator -->
 
             <Field id="zzSelectionSeparator" type="separator"> </Field>
-
             <Field id="zzSelectionTitle" type="label" alignText="center">
                 <Label>Select ADC Device and Channel</Label>
             </Field>
 
-
-            <!-- analogInput ioDevType -->
+            <!-- analogInput ConfigUI ioDevType -->
 
             <Field id="ioDevType" type="menu" defaultValue="MCP3208">
                 <Label>ADC Device:</Label>
@@ -145,8 +139,7 @@ v0.8.0   3/20/2023  Change the device types for analog input and analog output
                 </List>
             </Field>
 
-
-            <!-- analogInput spiChannel -->
+            <!-- analogInput ConfigUI spiChannel -->
 
             <Field id="spiChannel" type="menu" defaultValue="0"
                    visibleBindingId="ioDevType"
@@ -158,11 +151,9 @@ v0.8.0   3/20/2023  Change the device types for analog input and analog output
                 </List>
             </Field>
 
-
-            <!-- analogInput i2cAddress -->
+            <!-- analogInput ConfigUI i2cAddress -->
 
             <Field id="i2cAddress" type="textfield"  hidden="true"> </Field>
-
             <Field id="i2cAddress8" type="menu" defaultValue="0x68"
                    visibleBindingId="ioDevType"
                    visibleBindingValue="(MCP3423, MCP3424)">
@@ -179,11 +170,9 @@ v0.8.0   3/20/2023  Change the device types for analog input and analog output
                 </List>
             </Field>
 
-
-            <!-- analogInput adcChannel -->
+            <!-- analogInput ConfigUI adcChannel -->
 
             <Field id="adcChannel" type="textfield" hidden="true"> </Field>
-
             <Field id="adcChannel2" type="menu" defaultValue="0"
                    visibleBindingId="ioDevType"
                    visibleBindingValue="(MCP3202, MCP3422, MCP3423)">
@@ -193,7 +182,6 @@ v0.8.0   3/20/2023  Change the device types for analog input and analog output
                     <Option value="1">Channel 1</Option>
                 </List>
             </Field>
-
             <Field id="adcChannel4" type="menu" defaultValue="0"
                    visibleBindingId="ioDevType"
                    visibleBindingValue="(MCP3204, MCP3424)">
@@ -205,7 +193,6 @@ v0.8.0   3/20/2023  Change the device types for analog input and analog output
                     <Option value="3">Channel 3</Option>
                 </List>
             </Field>
-
             <Field id="adcChannel8" type="menu" defaultValue="0"
                    visibleBindingId="ioDevType"
                    visibleBindingValue="MCP3208">
@@ -222,21 +209,17 @@ v0.8.0   3/20/2023  Change the device types for analog input and analog output
                 </List>
             </Field>
 
+            <!-- ############      analogInput ConfigUI        ############ -->
+            <!-- ############     3. Device Configuration      ############ -->
 
-            <!-- ##############     Analog Input Device      ############## -->
-            <!-- ##############   3. Device Configuration    ############## -->
-
-
-            <!-- analogInput configSeparator -->
+            <!-- analogInput ConfigUI configSeparator -->
 
             <Field id="zzConfigSeparator" type="separator"> </Field>
-
             <Field id="zzConfigTitle" type="label" alignText="center">
                 <Label>Configure ADC</Label>
             </Field>
 
-
-            <!-- analogInput inputConfiguration -->
+            <!-- analogInput ConfigUI inputConfiguration -->
 
             <Field id="inputConfiguration" type="menu" defaultValue="1"
                    visibleBindingId="ioDevType"
@@ -248,24 +231,21 @@ v0.8.0   3/20/2023  Change the device types for analog input and analog output
                 </List>
             </Field>
 
-
-            <!-- analogInput referenceVoltage -->
+            <!-- analogInput ConfigUI referenceVoltage -->
 
             <Field id="referenceVoltage" type="textfield" defaultValue="4.096"
                    visibleBindingId="ioDevType"
                    visibleBindingValue="(MCP3202, MCP3204, MCP3208)">
                 <Label>Reference Voltage (V):</Label>
             </Field>
-
             <Field id="zzReferenceVoltageLabel" type="label" fontSize="small"
-                   fontColor="darkgray" alignWithControl="true"
+                   fontColor="darkgray" alignText="center"
                    visibleBindingId="ioDevType"
                    visibleBindingValue="(MCP3202, MCP3204, MCP3208)">
-                <Label>Enter the internal reference voltage for the selected ADC, or the external reference voltage if used..</Label>
+                <Label>Enter the internal or external reference voltage for the selected ADC.</Label>
             </Field>
 
-
-            <!-- analogInput resolution -->
+            <!-- analogInput ConfigUI resolution -->
 
             <Field id="resolution" type="menu" defaultValue="12"
                    visibleBindingId="ioDevType"
@@ -279,8 +259,7 @@ v0.8.0   3/20/2023  Change the device types for analog input and analog output
                 </List>
             </Field>
 
-
-            <!-- analogInput gain -->
+            <!-- analogInput ConfigUI gain -->
 
             <Field id="gain" type="menu" defaultValue="1"
                    visibleBindingId="ioDevType"
@@ -294,20 +273,18 @@ v0.8.0   3/20/2023  Change the device types for analog input and analog output
                 </List>
             </Field>
 
-
-            <!-- analogInput scalingFactor -->
+            <!-- analogInput ConfigUI scalingFactor -->
 
             <Field id="scalingFactor" type="textfield" defaultValue="2.47058824">
                 <Label>Scaling Factor:</Label>
             </Field>
-
             <Field id="zzScalingLabel" type="label" fontSize="small"
-                   fontColor="darkgray" alignWithControl="true">
-                <Label>The Scaling Factor is used to calibrate an analog input device for a specific application.  It multiplies all raw values read from the ADC.  The default value is for voltage measurements using the AB Electronics ADC Pi board.</Label>
+                   fontColor="darkgray" alignText="center">
+                <Label>The Scaling Factor is used to calibrate an analog input device.
+                    It multiplies all raw values read from the ADC.</Label>
             </Field>
 
-
-            <!-- analogInput units -->
+            <!-- analogInput ConfigUI units -->
 
             <Field id="units" type="menu" defaultValue=" ">
                 <Label>Sensor Value Units:</Label>
@@ -327,33 +304,48 @@ v0.8.0   3/20/2023  Change the device types for analog input and analog output
                 </List>
             </Field>
 
-            <!-- analogInput bitRate -->
+            <!-- analogInput ConfigUI bitRate -->
 
-            <Field id="bitRate" type="textfield" defaultValue="2000"
+            <Field id="bitRate" type="textfield" defaultValue="2.0"
                    visibleBindingId="ioDevType"
-                   visibleBindingValue="(MCP3204, MCP3208)">
-                <Label>SPI Bit Rate (100-10000 kb/s):</Label>
+                   visibleBindingValue="(MCP3202, MCP3204, MCP3208)">
+                <Label>SPI Bit Rate (0.1-10.0 Mb/s):</Label>
             </Field>
-
             <Field id="zzBitRateLabel" type="label" fontSize="small"
-                   fontColor="darkgray" alignWithControl="true">
-                <Label>SPI bus data transfer rate for this device.  The bit rate in kb/s is usually equal to the SPI clock rate in kHz.</Label>
+                   fontColor="darkgray" alignText="center"
+                   visibleBindingId="ioDevType"
+                   visibleBindingValue="(MCP3202, MCP3204, MCP3208)">
+                <Label>Specify the SPI data transfer rate for this device.
+                    The bit rate in Mb/s is equal to the SPI clock rate in MHz.</Label>
             </Field>
 
+            <!-- analogInput ConfigUI checkSPI -->
 
-            <!-- ##############     Analog Input Device      ############## -->
-            <!-- ##############        4. Processing         ############## -->
+            <Field id="checkSPI" type="checkbox" defaultValue="false"
+                    visibleBindingId="ioDevType"
+                    visibleBindingValue="(MCP3202, MCP3204, MCP3208)">
+                <Label>Check SPI Integrity:</Label>
+            </Field>
+            <Field id="checkLabel" type="label" fontSize="small"
+                   fontColor="darkgray" alignText="center"
+                   visibleBindingId="ioDevType"
+                   visibleBindingValue="(MCP3202, MCP3204, MCP3208)">
+                <Label>Check SPI integrity by repeating each SPI device read.
+                    Log a warning if consecutive analog reads differ by more than 10 counts.
+                    If this persists, the SPI bit rate may be too high for the device.</Label>
+            </Field>
 
+            <!-- ############      analogInput ConfigUI        ############ -->
+            <!-- ############          4. Processing           ############ -->
 
-            <!-- analogOutput processingSeparator -->
+            <!-- analogInput ConfigUI processingSeparator -->
 
             <Field id="zzProcessingSeparator" type="separator"> </Field>
-
             <Field id="zzProcessingTitle" type="label" alignText="center">
                 <Label>Select Display and Processing Options</Label>
             </Field>
 
-            <!-- analogInput displayStateId -->
+            <!-- analogInput ConfigUI displayStateId -->
 
             <Field id="displayStateId" type="menu" defaultValue="sensorValue">
                 <Label>Display State:</Label>
@@ -362,121 +354,117 @@ v0.8.0   3/20/2023  Change the device types for analog input and analog output
                     <Option value="onOffState">On/Off State</Option>
                 </List>
             </Field>
-
             <Field id="zzDisplayStateIdLabel" type="label" fontSize="small"
-                   fontColor="darkgray" alignWithControl="true">
+                   fontColor="darkgray" alignText="center">
                 <Label>Select the state to display in the Indigo Home window.</Label>
             </Field>
 
-
-            <!-- analogInput changeThreshold -->
+            <!-- analogInput ConfigUI changeThreshold -->
 
             <Field id="changeThreshold" type="textfield" defaultValue="None">
                 <Label>Change Detection Threshold (percent or None):</Label>
             </Field>
-
             <Field id="zzChangeThresholdLabel" type="label" fontSize="small"
-                   fontColor="darkgray" alignWithControl="true">
+                   fontColor="darkgray" alignText="center">
                 <Label>Enter a percentage threshold for change detection or None if no change detection is desired.</Label>
             </Field>
 
-            <!-- analogInput onThreshold -->
+            <!-- analogInput ConfigUI onThreshold -->
 
             <Field id="onThreshold" type="textfield" defaultValue="None">
                 <Label>Analog On Threshold (units or None):</Label>
             </Field>
-
             <Field id="zzOnThresholdLabel" type="label" fontSize="small"
-                   fontColor="darkgray" alignWithControl="true">
+                   fontColor="darkgray" alignText="center">
                 <Label>Enter an analog on threshold for the onOffState or None if no onOffState is desired.</Label>
             </Field>
 
-
-            <!-- analogInput lowLimit -->
+            <!-- analogInput ConfigUI lowLimit -->
 
             <Field id="lowLimit" type="textfield" defaultValue="None">
                 <Label>Low Limit (units or None):</Label>
             </Field>
-
             <Field id="zzLowLimitLabel" type="label" fontSize="small"
-                   fontColor="darkgray" alignWithControl="true">
+                   fontColor="darkgray" alignText="center">
                 <Label>Enter a low limit for limit checking or None if no low limit checking is desired.</Label>
             </Field>
 
-
-             <!-- analogInput highLimit -->
+            <!-- analogInput ConfigUI highLimit -->
 
             <Field id="highLimit" type="textfield" defaultValue="None">
                 <Label>High Limit (units or None):</Label>
             </Field>
-
             <Field id="zzHighLimitLabel" type="label" fontSize="small"
-                   fontColor="darkgray" alignWithControl="true">
+                   fontColor="darkgray" alignText="center">
                 <Label>Enter a high limit for limit checking or None if no high limit checking is desired.</Label>
             </Field>
 
+            <!-- ############      analogInput ConfigUI        ############ -->
+            <!-- ############     5. Polling and Logging       ############ -->
 
-            <!-- ############       Analog Input Device        ############ -->
-            <!-- ############      5. Polling and Logging      ############ -->
-
-
-            <!-- analogInput pollingSeparator -->
+            <!-- analogInput ConfigUI pollingSeparator -->
 
             <Field id="zzPollingSeparator" type="separator"> </Field>
-
             <Field id="zzPollingTitle" type="label" alignText="center">
                 <Label>Select Polling and Logging Options</Label>
             </Field>
 
-
-            <!-- analogInput polling -->
+            <!-- analogInput ConfigUI polling -->
 
             <Field id="polling" type="checkbox" defaultValue="false">
                 <Label>Enable Input Polling:</Label>
             </Field>
-
             <Field id="zzPollingLabel" type="label" fontSize="small"
-                   fontColor="darkgray" alignWithControl="true">
-                <Label>Read the sensor value at regular intervals, perform change detection and limit checks, update the value, and log it if changed.</Label>
+                   fontColor="darkgray" alignText="center">
+                <Label>Read the sensor value at regular intervals and log it if it changed.</Label>
             </Field>
-
             <Field id="pollingInterval" type="textfield" defaultValue="10"
                    visibleBindingId="polling" visibleBindingValue="true">
                 <Label>Polling Interval (seconds):</Label>
             </Field>
-
             <Field id="zzPollingIntervalLabel" type="label" fontSize="small"
-                   fontColor="darkgray" alignWithControl="true"
+                   fontColor="darkgray" alignText="center"
                    visibleBindingId="polling" visibleBindingValue="true">
-                <Label>Setting the interval to 0 reads the output in each pass through the run loop.  The actual polling interval depends on the run loop time.</Label>
+                <Label>Setting the interval to 0 reads the sensor value in each pass through the run loop.
+                    The actual polling interval depends on the run loop time.</Label>
             </Field>
 
-
-            <!-- analogInput logAll -->
+            <!-- analogInput ConfigUI logAll -->
 
             <Field id="logAll" type="checkbox" defaultValue="false"
                    visibleBindingId="polling" visibleBindingValue="true">
                 <Label>Log All Polling Results:</Label>
             </Field>
-
             <Field id="zzLogAllLabel" type="label" fontSize="small"
-                   fontColor="darkgray" alignWithControl="true"
+                   fontColor="darkgray" alignText="center"
                    visibleBindingId="polling" visibleBindingValue="true">
-                <Label>Log the sensor value after each poll regardless of the change.  By default, only changed values are logged.</Label>
+                <Label>Log the sensor value after each poll regardless of change.
+                    By default, only changed values are logged.</Label>
             </Field>
 
+            <!-- analogInput ConfigUI monitorStatus -->
+
+            <Field id="monitorStatus" type="checkbox" defaultValue="false"
+                   visibleBindingId="polling" visibleBindingValue="true">
+                <Label>Monitor Polling Status:</Label>
+            </Field>
+            <Field id="zzMonitorStatusLabel" type="label" fontSize="small"
+                   fontColor="darkgray" alignText="center"
+                   visibleBindingId="polling" visibleBindingValue="true">
+                <Label>Compute and log the average polling interval and rate over the period of the status interval.</Label>
+            </Field>
+            <Field id="statusInterval" type="textfield" defaultValue="10.0"
+                   visibleBindingId="monitorStatus" visibleBindingValue="true">
+                <Label>Status Monitoring Interval (minutes):</Label>
+            </Field>
 
         </ConfigUI>
 
-
         <States>
 
+            <!-- ############        analogInput States        ############ -->
 
-            <!-- ############       Analog Input Device        ############ -->
-            <!-- ############             6. States            ############ -->
-
-
-            <!-- analogInput sensorValue -->
+            <!-- analogInput States sensorValue -->
 
             <State id="sensorValue">
                 <ValueType>Number</ValueType>
@@ -484,8 +472,7 @@ v0.8.0   3/20/2023  Change the device types for analog input and analog output
 				<ControlPageLabel>Sensor Value</ControlPageLabel>
             </State>
 
-
-            <!-- analogInput changeDetected -->
+            <!-- analogInput States changeDetected -->
 
             <State id="changeDetected">
                 <ValueType boolType="TrueFalse">Boolean</ValueType>
@@ -493,8 +480,7 @@ v0.8.0   3/20/2023  Change the device types for analog input and analog output
 				<ControlPageLabel>Sensor Value Change Detected</ControlPageLabel>
             </State>
 
-
-            <!-- analogInput limitFault -->
+            <!-- analogInput States limitFault -->
 
             <State id="limitFault">
                 <ValueType boolType="TrueFalse">Boolean</ValueType>
@@ -502,21 +488,8 @@ v0.8.0   3/20/2023  Change the device types for analog input and analog output
 				<ControlPageLabel>Sensor Value Limit Fault</ControlPageLabel>
             </State>
 
-
-            <!-- analogInput limitFaultMessage -->
-
-            <State id="limitFaultMessage">
-                <ValueType>String</ValueType>
-                <TriggerLabel>Last Limit Fault Message</TriggerLabel>
-				<ControlPageLabel>Last Limit Fault Message</ControlPageLabel>
-            </State>
-
-
         </States>
-
-
     </Device>
-
 
     <!-- ################################################################## -->
     <!-- #                                                                # -->
@@ -524,64 +497,53 @@ v0.8.0   3/20/2023  Change the device types for analog input and analog output
     <!-- #                                                                # -->
     <!-- ################################################################## -->
 
-
     <Device id="analogOutput" type="relay">
         <Name>Analog Output</Name>
         <ConfigUI>
 
-
-            <!-- ############       Analog Output Device       ############ -->
+            <!-- ############       analogOutput ConfigUI      ############ -->
             <!-- ############       1. Raspberry Pi Host       ############ -->
 
-
-            <!-- analogOutput hostTitle -->
+            <!-- analogOutput ConfigUI hostTitle -->
 
             <Field id="zzHostTitle" type="label" alignText="center">
                 <Label>Select Raspberry Pi Host</Label>
             </Field>
 
-
-            <!-- analogOutput hostAddress -->
+            <!-- analogOutput ConfigUI hostAddress -->
 
             <Field id="hostAddress" type="textfield"
                    defaultValue="raspi4b-io.local">
                 <Label>Host Address (FQDN or IPv4):</Label>
             </Field>
 
-
-            <!-- analogOutput portNumber -->
+            <!-- analogOutput ConfigUI portNumber -->
 
             <Field id="portNumber" type="textfield" defaultValue="8888">
                 <Label>Port Number (1024-65535):</Label>
             </Field>
 
-
-            <!-- analogOutput hostId -->
+            <!-- analogOutput ConfigUI hostId -->
 
             <Field id="hostId" type="textfield" defaultValue="">
                 <Label>Host Id:</Label>
             </Field>
-
             <Field id="zzHostIdLabel" type="label" fontSize="small"
-                   fontColor="darkgray" alignWithControl="true">
-                <Label>The Host Id is a short, unique code that is used to compactly identify the host in Indigo.  It may be user specified or left blank for automatic assignment. Automatically assigned id's are extracted from the host FQDN ("name-id.domainName"), or simply set to "pi".</Label>
+                   fontColor="darkgray" alignText="center">
+                <Label>The Host Id is a short, unique code that is used to compactly identify the host.  It may be user specified or automatically assigned from the FQDN (name-id.domainName).</Label>
             </Field>
 
-
-            <!-- ############      Analog Output Device        ############ -->
+            <!-- ############       analogOutput ConfigUI      ############ -->
             <!-- ############  2. Device Type and Channel Id   ############ -->
 
-
-            <!-- analogOutput selectionSeparator -->
+            <!-- analogOutput ConfigUI selectionSeparator -->
 
             <Field id="zzSelectionSeparator" type="separator"> </Field>
-
             <Field id="zzSelectionTitle" type="label" alignText="center">
                 <Label>Select DAC Device and Channel</Label>
             </Field>
 
-
-            <!-- analogOutput ioDevType -->
+            <!-- analogOutput ConfigUI ioDevType -->
 
             <Field id="ioDevType" type="menu" defaultValue="MCP4822">
                 <Label>DAC Device:</Label>
@@ -595,8 +557,7 @@ v0.8.0   3/20/2023  Change the device types for analog input and analog output
                 </List>
             </Field>
 
-
-            <!-- analogOutput spiChannel -->
+            <!-- analogOutput ConfigUI spiChannel -->
 
             <Field id="spiChannel" type="menu" defaultValue="0">
                 <Label>SPI Channel:</Label>
@@ -606,17 +567,14 @@ v0.8.0   3/20/2023  Change the device types for analog input and analog output
                 </List>
             </Field>
 
-
-             <!-- analogOutput dacChannel -->
+             <!-- analogOutput ConfigUI dacChannel -->
 
             <Field id="dacChannel" type="textfield" hidden="true"> </Field>
-
             <Field id="dacChannel1" type="textfield" defaultValue="0"
                    hidden="true"
                    visibleBindingId="ioDevType"
                    visibleBindingValue="(MCP4801, MCP4811, MCP4821)">
             </Field>
-
             <Field id="dacChannel2" type="menu" defaultValue="0"
                    visibleBindingId="ioDevType"
                    visibleBindingValue="(MCP4802, MCP4812, MCP4822)">
@@ -627,21 +585,17 @@ v0.8.0   3/20/2023  Change the device types for analog input and analog output
                 </List>
             </Field>
 
+            <!-- ############       analogOutput ConfigUI      ############ -->
+            <!-- ############      3. Device Configuration     ############ -->
 
-            <!-- ##############    Analog Output Device      ############## -->
-            <!-- ##############   3. Device Configuration    ############## -->
-
-
-            <!-- analogOutput configSeparator -->
+            <!-- analogOutput ConfigUI configSeparator -->
 
             <Field id="zzConfigSeparator" type="separator"> </Field>
-
             <Field id="zzConfigTitle" type="label" alignText="center">
                 <Label>Configure DAC</Label>
             </Field>
 
-
-            <!-- analogOutput gain -->
+            <!-- analogOutput ConfigUI gain -->
 
             <Field id="gain" type="menu" defaultValue="1">
                 <Label>Gain:</Label>
@@ -651,20 +605,18 @@ v0.8.0   3/20/2023  Change the device types for analog input and analog output
                 </List>
             </Field>
 
-
-            <!-- analogOutput scalingFactor -->
+            <!-- analogOutput ConfigUI scalingFactor -->
 
             <Field id="scalingFactor" type="textfield" defaultValue="1.0">
                 <Label>Scaling Factor:</Label>
             </Field>
-
             <Field id="zzScalingLabel" type="label" fontSize="small"
-                   fontColor="darkgray" alignWithControl="true">
-                <Label>The Scaling Factor is used to calibrate an analog output device for a specific application.  It divides all sensor values written to the DAC.</Label>
+                   fontColor="darkgray" alignText="center">
+                <Label>The Scaling Factor is used to calibrate an analog output device.
+                    It divides all sensor values written to the DAC.</Label>
             </Field>
 
-
-            <!-- analogOutput units -->
+            <!-- analogOutput ConfigUI units -->
 
             <Field id="units" type="menu" defaultValue=" ">
                 <Label>Sensor Value Units:</Label>
@@ -684,33 +636,28 @@ v0.8.0   3/20/2023  Change the device types for analog input and analog output
                 </List>
             </Field>
 
+            <!-- analogOutput ConfigUI bitRate -->
 
-            <!-- analogOutput bitRate -->
-
-            <Field id="bitRate" type="textfield" defaultValue="2000">
-                <Label>SPI Bit Rate (100-10000 kb/s):</Label>
+            <Field id="bitRate" type="textfield" defaultValue="2.0">
+                <Label>SPI Bit Rate (0.1-10.0 Mb/s):</Label>
             </Field>
-
             <Field id="zzBitRateLabel" type="label" fontSize="small"
-                   fontColor="darkgray" alignWithControl="true">
-                <Label>SPI bus data transfer rate for this device.  The bit rate in kb/s is usually equal to the SPI clock rate in kHz.</Label>
+                   fontColor="darkgray" alignText="center">
+                <Label>Specify the SPI data transfer rate for this device.
+                    The bit rate in Mb/s is equal to the SPI clock rate in MHz.</Label>
             </Field>
 
+            <!-- ############      analogOutput ConfigUI       ############ -->
+            <!-- ############          4. Processing           ############ -->
 
-            <!-- ##############     Analog Output Device     ############## -->
-            <!-- ##############        4. Processing         ############## -->
-
-
-            <!-- analogOutput processingSeparator -->
+            <!-- analogOutput ConfigUI processingSeparator -->
 
             <Field id="zzProcessingSeparator" type="separator"> </Field>
-
             <Field id="zzProcessingTitle" type="label" alignText="center">
                 <Label>Select Display and Processing Options</Label>
             </Field>
 
-
-            <!-- analogOutput displayStateId -->
+            <!-- analogOutput ConfigUI displayStateId -->
 
             <Field id="displayStateId" type="menu" defaultValue="sensorValue">
                 <Label>Display State:</Label>
@@ -719,138 +666,137 @@ v0.8.0   3/20/2023  Change the device types for analog input and analog output
                     <Option value="onOffState">On/Off State</Option>
                 </List>
             </Field>
-
             <Field id="zzDisplayStateIdLabel" type="label" fontSize="small"
-                   fontColor="darkgray" alignWithControl="true">
+                   fontColor="darkgray" alignText="center">
                 <Label>Select the state to display in the Indigo Home window.</Label>
             </Field>
 
-
-            <!-- analogOutput changeThreshold -->
+            <!-- analogOutput ConfigUI changeThreshold -->
 
             <Field id="changeThreshold" type="textfield" defaultValue="None">
                 <Label>Change Detection Threshold (percent or None):</Label>
             </Field>
-
             <Field id="zzChangeThresholdLabel" type="label" fontSize="small"
-                   fontColor="darkgray" alignWithControl="true">
+                   fontColor="darkgray" alignText="center">
                 <Label>Enter a percentage threshold for change detection or None if no change detection is desired.</Label>
             </Field>
 
-
-            <!-- analogOutput onThreshold -->
+            <!-- analogOutput ConfigUI onThreshold -->
 
             <Field id="onThreshold" type="textfield" defaultValue="None">
                 <Label>Analog On Threshold (units or None):</Label>
             </Field>
-
             <Field id="zzOnThresholdLabel" type="label" fontSize="small"
-                   fontColor="darkgray" alignWithControl="true">
+                   fontColor="darkgray" alignText="center">
                 <Label>Enter an analog on threshold for the onOffState or None if no onOffState is desired.</Label>
             </Field>
 
-
-            <!-- analogOutput lowLimit -->
+            <!-- analogOutput ConfigUI lowLimit -->
 
             <Field id="lowLimit" type="textfield" defaultValue="None">
                 <Label>Low Limit (units or None):</Label>
             </Field>
-
             <Field id="zzLowLimitLabel" type="label" fontSize="small"
-                   fontColor="darkgray" alignWithControl="true">
+                   fontColor="darkgray" alignText="center">
                 <Label>Enter a low limit for limit checking or None if no low limit checking is desired.</Label>
             </Field>
 
-
-             <!-- analogOutput highLimit -->
+             <!-- analogOutput ConfigUI highLimit -->
 
             <Field id="highLimit" type="textfield" defaultValue="None">
                 <Label>High Limit (units or None):</Label>
             </Field>
-
             <Field id="zzHighLimitLabel" type="label" fontSize="small"
-                   fontColor="darkgray" alignWithControl="true">
+                   fontColor="darkgray" alignText="center">
                 <Label>Enter a high limit for limit checking or None if no high limit checking is desired.</Label>
             </Field>
 
-
-            <!-- analogOutput turnOnValue -->
+            <!-- analogOutput ConfigUI turnOnValue -->
 
             <Field id="turnOnValue" type="textfield" defaultValue="None">
                 <Label>Turn On Sensor Value (units or None):</Label>
             </Field>
-
             <Field id="zzTurnOnValueLabel" type="label" fontSize="small"
-                   fontColor="darkgray" alignWithControl="true">
+                   fontColor="darkgray" alignText="center">
                 <Label>Enter a sensor value to write in a turn on action, or None if no turn on is desired.</Label>
             </Field>
 
-
-             <!-- analogOutput turnOffValue -->
+             <!-- analogOutput ConfigUI turnOffValue -->
 
             <Field id="turnOffValue" type="textfield" defaultValue="None">
                 <Label>Turn Off Sensor Value (units or None):</Label>
             </Field>
-
             <Field id="zzTurnOffValueLabel" type="label" fontSize="small"
-                   fontColor="darkgray" alignWithControl="true">
+                   fontColor="darkgray" alignText="center">
                 <Label>Enter a sensor value to write in a turn off action, or None if no turn off is desired.</Label>
             </Field>
 
-
-            <!-- ############       Analog Output Device       ############ -->
+            <!-- ############      analogOutput ConfigUI       ############ -->
             <!-- ############      5. Polling and Logging      ############ -->
 
+            <!-- analogOutput ConfigUI loggingSeparator -->
 
-            <!-- analogOutput loggingSeparator -->
-
-            <Field id="zzLoggingSeparator" type="separator"> </Field>
-
-            <Field id="zzLoggingTitle" type="label" alignText="center">
-                <Label>Select Logging Options</Label>
+            <Field id="zzPollingSeparator" type="separator"> </Field>
+            <Field id="zzPollingTitle" type="label" alignText="center">
+                <Label>Select Polling and Logging Options</Label>
             </Field>
 
-
-            <!-- analogOutput polling -->
+            <!-- analogOutput ConfigUI polling -->
 
             <Field id="polling" type="checkbox" defaultValue="false">
-                <Label>Enable Output Logging:</Label>
+                <Label>Enable Output Polling:</Label>
             </Field>
-
             <Field id="zzPollingLabel" type="label" fontSize="small"
-                   fontColor="darkgray" alignWithControl="true">
-                <Label>Log the output value at regular intervals.</Label>
+                   fontColor="darkgray" alignText="center">
+                <Label>Get the sensor value at regular intervals and log it if it changed.  If possible, read the value from the output device; if not, fetch it from the device states dictionary.</Label>
             </Field>
-
             <Field id="pollingInterval" type="textfield" defaultValue="10"
                    visibleBindingId="polling" visibleBindingValue="true">
-                <Label>Logging Interval (seconds):</Label>
+                <Label>Polling Interval (seconds):</Label>
             </Field>
-
             <Field id="zzPollingIntervalLabel" type="label" fontSize="small"
-                   fontColor="darkgray" alignWithControl="true"
+                   fontColor="darkgray" alignText="center"
                    visibleBindingId="polling" visibleBindingValue="true">
-                <Label>Setting the interval to 0 logs the output in each pass through the run loop.  The actual logging interval depends on the run loop time.</Label>
+                 <Label>Setting the interval to 0 gets the output sensor value in each pass through the run loop.
+                    The actual polling interval depends on the run loop time.</Label>
             </Field>
 
+            <!-- analogOutput ConfigUI logAll -->
 
-            <!-- analogOutput logAll -->
+            <Field id="logAll" type="checkbox" defaultValue="false"
+                   visibleBindingId="polling" visibleBindingValue="true">
+                <Label>Log All Polling Results:</Label>
+            </Field>
+            <Field id="zzLogAllLabel" type="label" fontSize="small"
+                   fontColor="darkgray" alignText="center"
+                   visibleBindingId="polling" visibleBindingValue="true">
+                <Label>Log the output sensor value after each poll regardless of change.
+                    By default, only changed values are logged.</Label>
+            </Field>
 
-            <Field id="logAll" type="checkbox" defaultValue="true"
-                   hidden="true"> </Field>
+            <!-- analogOutput ConfigUI monitorStatus -->
 
+            <Field id="monitorStatus" type="checkbox" defaultValue="false"
+                   visibleBindingId="polling" visibleBindingValue="true">
+                <Label>Monitor Polling Status:</Label>
+            </Field>
+            <Field id="zzMonitorStatusLabel" type="label" fontSize="small"
+                   fontColor="darkgray" alignText="center"
+                   visibleBindingId="polling" visibleBindingValue="true">
+                <Label>Compute and log the average polling interval and rate over the period of the status interval.</Label>
+            </Field>
+            <Field id="statusInterval" type="textfield" defaultValue="10.0"
+                   visibleBindingId="monitorStatus" visibleBindingValue="true">
+                <Label>Status Monitoring Interval (minutes):</Label>
+            </Field>
 
         </ConfigUI>
 
-
         <States>
 
+            <!-- ############       analogOutput States        ############ -->
 
-            <!-- ############       Analog Output Device       ############ -->
-            <!-- ############             6. States            ############ -->
-
-
-            <!-- analogOutput sensorValue -->
+            <!-- analogOutput States sensorValue -->
 
             <State id="sensorValue">
                 <ValueType>Number</ValueType>
@@ -858,8 +804,7 @@ v0.8.0   3/20/2023  Change the device types for analog input and analog output
 				<ControlPageLabel>Sensor Value</ControlPageLabel>
             </State>
 
-
-            <!-- analogOutput changeDetected -->
+            <!-- analogOutput States changeDetected -->
 
             <State id="changeDetected">
                 <ValueType boolType="TrueFalse">Boolean</ValueType>
@@ -867,8 +812,7 @@ v0.8.0   3/20/2023  Change the device types for analog input and analog output
 				<ControlPageLabel>Sensor Value Change Detected</ControlPageLabel>
             </State>
 
-
-            <!-- analogOutput limitFault -->
+            <!-- analogOutput States limitFault -->
 
             <State id="limitFault">
                 <ValueType boolType="TrueFalse">Boolean</ValueType>
@@ -876,21 +820,8 @@ v0.8.0   3/20/2023  Change the device types for analog input and analog output
 				<ControlPageLabel>Sensor Value Limit Fault</ControlPageLabel>
             </State>
 
-
-            <!-- analogOutput limitFaultMessage -->
-
-            <State id="limitFaultMessage">
-                <ValueType>String</ValueType>
-                <TriggerLabel>Last Limit Fault Message</TriggerLabel>
-				<ControlPageLabel>Last Limit Fault Message</ControlPageLabel>
-            </State>
-
-
         </States>
-
-
     </Device>
-
 
     <!-- ################################################################## -->
     <!-- #                                                                # -->
@@ -898,64 +829,53 @@ v0.8.0   3/20/2023  Change the device types for analog input and analog output
     <!-- #                                                                # -->
     <!-- ################################################################## -->
 
-
     <Device id="digitalInput" type="sensor">
         <Name>Digital Input</Name>
         <ConfigUI>
 
-
-            <!-- ############       Digital Input Device       ############ -->
+            <!-- ############      Digital Input ConfigUI      ############ -->
             <!-- ############       1. Raspberry Pi Host       ############ -->
 
-
-            <!-- digitalInput hostTitle-->
+            <!-- digitalInput ConfigUI hostTitle-->
 
             <Field id="zzHostTitle" type="label" alignText="center">
                 <Label>Select Raspberry Pi Host</Label>
             </Field>
 
-
-            <!-- digitalInput hostAddress -->
+            <!-- digitalInput ConfigUI hostAddress -->
 
             <Field id="hostAddress" type="textfield"
                    defaultValue="raspi4b-io.local">
                 <Label>Host Address (FQDN or IPv4):</Label>
             </Field>
 
-
-            <!-- digitalInput portNumber -->
+            <!-- digitalInput ConfigUI portNumber -->
 
             <Field id="portNumber" type="textfield" defaultValue="8888">
                 <Label>Port Number (1024-65535):</Label>
             </Field>
 
-
-            <!-- digitalInput hostId -->
+            <!-- digitalInput ConfigUI hostId -->
 
             <Field id="hostId" type="textfield" defaultValue="">
                 <Label>Host Id:</Label>
             </Field>
-
             <Field id="zzHostIdLabel" type="label" fontSize="small"
-                   fontColor="darkgray" alignWithControl="true">
-                <Label>The Host Id is a short, unique code that is used to compactly identify the host in Indigo.  It may be user specified or left blank for automatic assignment. Automatically assigned id's are extracted from the host FQDN ("name-id.domainName"), or simply set to "pi".</Label>
+                   fontColor="darkgray" alignText="center">
+                <Label>The Host Id is a short, unique code that is used to compactly identify the host.  It may be user specified or automatically assigned from the FQDN (name-id.domainName).</Label>
             </Field>
 
-
-            <!-- ############      Digital Input Device        ############ -->
+            <!-- ############      Digital Input ConfigUI      ############ -->
             <!-- ############  2. Device Type and Channel Id   ############ -->
 
-
-            <!-- digitalInput selectionSeparator -->
+            <!-- digitalInput ConfigUI selectionSeparator -->
 
             <Field id="zzSelectionSeparator" type="separator"> </Field>
-
             <Field id="zzSelectionTitle" type="label" alignText="center">
                 <Label>Select Digital Input Device and GPIO Bit</Label>
             </Field>
 
-
-            <!-- digitalInput ioDevType -->
+            <!-- digitalInput ConfigUI ioDevType -->
 
             <Field id="ioDevType" type="menu" defaultValue="pigpio">
                 <Label>Digital Input Device:</Label>
@@ -968,8 +888,7 @@ v0.8.0   3/20/2023  Change the device types for analog input and analog output
                 </List>
             </Field>
 
-
-            <!-- digitalInput gpioNumber -->
+            <!-- digitalInput ConfigUI gpioNumber -->
 
             <Field id="gpioNumber" type="menu" defaultValue="17"
                    visibleBindingId="ioDevType" visibleBindingValue="pigpio">
@@ -995,11 +914,9 @@ v0.8.0   3/20/2023  Change the device types for analog input and analog output
                 </List>
             </Field>
 
-
-            <!-- digitalInput i2cAddress -->
+            <!-- digitalInput ConfigUI i2cAddress -->
 
             <Field id="i2cAddress" type="textfield"  hidden="true"> </Field>
-
             <Field id="i2cAddress8" type="menu" defaultValue="0x20"
                    visibleBindingId="ioDevType"
                    visibleBindingValue="(MCP23008, MCP23017)">
@@ -1016,8 +933,7 @@ v0.8.0   3/20/2023  Change the device types for analog input and analog output
                 </List>
             </Field>
 
-
-            <!-- digitalInput spiChannel -->
+            <!-- digitalInput ConfigUI spiChannel -->
 
             <Field id="spiChannel" type="menu" defaultValue="0"
                    visibleBindingId="ioDevType"
@@ -1029,12 +945,10 @@ v0.8.0   3/20/2023  Change the device types for analog input and analog output
                 </List>
             </Field>
 
-
-            <!-- digitalInput spiDeviceAddress -->
+            <!-- digitalInput ConfigUI spiDeviceAddress -->
 
             <Field id="spiDevAddress" type="textfield" defaultValue="0x20"
                    hidden="true"> </Field>
-
             <Field id="spiDevAddress4" type="menu" defaultValue="0x20"
                    visibleBindingId="ioDevType" visibleBindingValue="MCP23S08">
                 <Label>SPI Device Address:</Label>
@@ -1045,7 +959,6 @@ v0.8.0   3/20/2023  Change the device types for analog input and analog output
                     <Option value="0x23">0x23</Option>
                 </List>
             </Field>
-
             <Field id="spiDevAddress8" type="menu" defaultValue="0x20"
                    visibleBindingId="ioDevType" visibleBindingValue="MCP23S17">
                 <Label>SPI Device Address:</Label>
@@ -1061,8 +974,7 @@ v0.8.0   3/20/2023  Change the device types for analog input and analog output
                 </List>
             </Field>
 
-
-            <!-- digitalInput ioPort -->
+            <!-- digitalInput ConfigUI ioPort -->
 
             <Field id="ioPort" type="menu" defaultValue="a"
                    visibleBindingId="ioDevType"
@@ -1074,8 +986,7 @@ v0.8.0   3/20/2023  Change the device types for analog input and analog output
                 </List>
             </Field>
 
-
-            <!-- digitalInput bitNumber -->
+            <!-- digitalInput ConfigUI bitNumber -->
 
             <Field id="bitNumber" type="menu" defaultValue="0"
                    visibleBindingId="ioDevType"
@@ -1093,37 +1004,30 @@ v0.8.0   3/20/2023  Change the device types for analog input and analog output
                 </List>
             </Field>
 
-
-            <!-- ##############     Digital Input Device     ############## -->
+            <!-- ############      Digital Input ConfigUI      ############ -->
             <!-- ##############   3. Device Configuration    ############## -->
 
-
-             <!-- digitalInput configSeparator -->
+            <!-- digitalInput ConfigUI configSeparator -->
 
             <Field id="zzConfigSeparator" type="separator"> </Field>
-
             <Field id="zzConfigTitle" type="label" alignText="center">
                 <Label>Configure Digital Input</Label>
             </Field>
 
-
-            <!-- digitalInput invert -->
+            <!-- digitalInput ConfigUI invert -->
 
             <Field id="invert" type="checkbox" defaultValue="false">
                 <Label>Invert On/Off State:</Label>
             </Field>
-
             <Field id="zzInvertLabel" type="label" fontSize="small"
-                   fontColor="darkgray" alignWithControl="true">
+                   fontColor="darkgray" alignText="center">
                 <Label>If checked, the on/off state is set to on for logic low and to off for logic high.</Label>
             </Field>
 
-
-            <!-- digitalInput pullup -->
+            <!-- digitalInput ConfigUI pullup -->
 
             <Field id="pullup" type="textfield" defaultValue="off"
                    hidden="true"> </Field>
-
             <Field id="pullup1" type="menu" defaultValue="off"
                    visibleBindingId="ioDevType" visibleBindingValue="pigpio">
                 <Label>Internal Input Bias:</Label>
@@ -1133,13 +1037,11 @@ v0.8.0   3/20/2023  Change the device types for analog input and analog output
                     <Option value="down">Pull down to logic low</Option>
                 </List>
             </Field>
-
             <Field id="zzPullup1Label" type="label" fontSize="small"
-                   fontColor="darkgray" alignWithControl="true"
+                   fontColor="darkgray" alignText="center"
                    visibleBindingId="ioDevType" visibleBindingValue="pigpio">
                 <Label>Open applies no bias to the digital input. Pull up or down biases the input to logic high or low through an internal resistor.</Label>
             </Field>
-
             <Field id="pullup2" type="menu" defaultValue="off"
                    visibleBindingId="ioDevType"
                    visibleBindingValue="(MCP23008, MCP23017, MCP23S08, MCP23S17)">
@@ -1149,141 +1051,137 @@ v0.8.0   3/20/2023  Change the device types for analog input and analog output
                     <Option value="up">Pull up to logic high</Option>
                 </List>
             </Field>
-
             <Field id="zzPullup2Label" type="label" fontSize="small"
-                   fontColor="darkgray" alignWithControl="true"
+                   fontColor="darkgray" alignText="center"
                    visibleBindingId="ioDevType"
                    visibleBindingValue="(MCP23008, MCP23017, MCP23S08, MCP23S17)">
                 <Label>Open applies no bias to the digital input. Pull up biases the input to logic high through an internal resistor.</Label>
             </Field>
 
-            <!-- digitalInput bitRate -->
+            <!-- digitalInput ConfigUI bitRate -->
 
-            <Field id="bitRate" type="textfield" defaultValue="2000"
+            <Field id="bitRate" type="textfield" defaultValue="10.0"
                    visibleBindingId="ioDevType"
                    visibleBindingValue="(MCP23S08, MCP23S17)">
-                <Label>SPI Bit Rate (100-10000 kb/s):</Label>
+                <Label>SPI Bit Rate (0.1-10.0 Mb/s):</Label>
             </Field>
-
             <Field id="zzBitRateLabel" type="label" fontSize="small"
-                   fontColor="darkgray" alignWithControl="true"
+                   fontColor="darkgray" alignText="center"
                    visibleBindingId="ioDevType"
                    visibleBindingValue="(MCP23S08, MCP23S17)">
-                <Label>SPI bus data transfer rate for this device.  The bit rate in kb/s is usually equal to the SPI clock rate in kHz.</Label>
+                <Label>Specify the SPI data transfer rate for this device.
+                    The bit rate in Mb/s is equal to the SPI clock rate in MHz.</Label>
             </Field>
 
+            <!-- digitalInput ConfigUI checkSPI -->
 
-            <!-- ##############     Digital Input Device     ############## -->
+            <Field id="checkSPI" type="checkbox" defaultValue="false"
+                    visibleBindingId="ioDevType"
+                    visibleBindingValue="(MCP23S08, MCP23S17)">
+                <Label>Check SPI Integrity:</Label>
+            </Field>
+            <Field id="checkLabel" type="label" fontSize="small"
+                   fontColor="darkgray" alignText="center"
+                   visibleBindingId="ioDevType"
+                   visibleBindingValue="(MCP23S08, MCP23S17)">
+                <Label>Check SPI integrity by repeating each SPI device read.
+                    Log a warning if the consecutive reads differ.
+                    If this persists, the SPI bit rate may be too high for the device.</Label>
+            </Field>
+
+            <!-- ############      Digital Input ConfigUI      ############ -->
             <!-- ##############        4. Processing         ############## -->
 
-
-             <!-- digitalInput interruptSeparator -->
+             <!-- digitalInput ConfigUI interruptSeparator -->
 
             <Field id="zzInterruptSeparator" type="separator"> </Field>
-
             <Field id="zzInterruptTitle" type="label" alignText="center">
                 <Label>Select Interrupt and Filter Options</Label>
             </Field>
 
-
-            <!-- digitalInput callback -->
+            <!-- digitalInput ConfigUI callback -->
 
             <Field id="callback" type="checkbox" defaultValue="false"
                    visibleBindingId="ioDevType" visibleBindingValue="pigpio">
                 <Label>Use GPIO Callback:</Label>
             </Field>
-
             <Field id="zzCallbackLabel" type="label" fontSize="small"
-                   fontColor="darkgray" alignWithControl="true"
+                   fontColor="darkgray" alignText="center"
                    visibleBindingId="ioDevType" visibleBindingValue="pigpio">
                 <Label>The GPIO callback updates/logs the device state on an input state change.  It eliminates the need for polling to detect changes.  It also enables interrupt relay and debounce filtering if requested.</Label>
             </Field>
 
-
-            <!-- digitalInput glitchFilter -->
+            <!-- digitalInput ConfigUI glitchFilter -->
 
             <Field id="glitchFilter" type="checkbox" defaultValue="false"
                    visibleBindingId="callback" visibleBindingValue="true">
                 <Label>Enable Glitch Filter:</Label>
             </Field>
-
             <Field id="zzGlitchFilterLabel" type="label" fontSize="small"
-                   fontColor="darkgray" alignWithControl="true"
+                   fontColor="darkgray" alignText="center"
                    visibleBindingId="callback" visibleBindingValue="true">
                 <Label>The glitch filter rejects callback state changes that are not stable for longer than the glitch time.  The callback is delayed by the glitch time.</Label>
             </Field>
-
             <Field id="glitchTime" type="textfield" defaultValue="10"
                    visibleBindingId="glitchFilter" visibleBindingValue="true">
                 <Label>Glitch Time (µsec):</Label>
             </Field>
-
             <Field id="zzGlitchTimeLabel" type="label" fontSize="small"
-                   fontColor="darkgray" alignWithControl="true"
+                   fontColor="darkgray" alignText="center"
                    visibleBindingId="glitchFilter" visibleBindingValue="true">
                 <Label>The glitch time should be as short as possible, but long enough to eliminate short, spurious glitches.</Label>
             </Field>
 
-
-            <!-- digitalInput bounceFilter -->
+            <!-- digitalInput ConfigUI bounceFilter -->
 
             <Field id="bounceFilter" type="checkbox" defaultValue="false"
                    visibleBindingId="callback" visibleBindingValue="true">
                 <Label>Enable Contact Bounce Filter:</Label>
             </Field>
-
             <Field id="zzBounceFilterLabel" type="label" fontSize="small"
-                   fontColor="darkgray" alignWithControl="true"
+                   fontColor="darkgray" alignText="center"
                    visibleBindingId="callback" visibleBindingValue="true">
                 <Label>The bounce filter rejects callback state changes that are separated by less than the bounce time.  It is used to eliminate multiple responses from bouncing mechanical switches/relays.</Label>
             </Field>
-
             <Field id="bounceTime" type="textfield" defaultValue="100"
                    visibleBindingId="bounceFilter" visibleBindingValue="true">
                 <Label>Bounce Time (µsec):</Label>
             </Field>
-
             <Field id="zzBounceTimeLabel" type="label" fontSize="small"
-                   fontColor="darkgray" alignWithControl="true"
+                   fontColor="darkgray" alignText="center"
                    visibleBindingId="bounceFilter" visibleBindingValue="true">
                 <Label>The bounce time must be tuned to each switch/application.  If too low, bouncing states will be processed normally.  If too high, valid state changes could be rejected.</Label>
             </Field>
-
             <Field id="logBounce" type="checkbox" defaultValue="false"
                    visibleBindingId="bounceFilter" visibleBindingValue="true">
                 <Label>Log Bounce Filter Warnings:</Label>
             </Field>
 
-
-            <!-- digitalInput relayInterrupts -->
+            <!-- digitalInput ConfigUI relayInterrupts -->
 
             <Field id="relayInterrupts" type="checkbox" defaultValue="false"
                    visibleBindingId="callback" visibleBindingValue="true">
                 <Label>Relay Hardware Interrupts:</Label>
             </Field>
-
             <Field id="zzRelayInterruptsLabel" type="label" fontSize="small"
-                   fontColor="darkgray" alignWithControl="true"
+                   fontColor="darkgray" alignText="center"
                    visibleBindingId="callback" visibleBindingValue="true">
                 <Label>Indicates that this GPIO input is connected to hardware interrupt outputs from one or more interrupt devices.  A transition on this GPIO causes the callback method to relay the interrupt to all interrupt devices.</Label>
             </Field>
 
-
-            <!-- digitalInput hardwareInterrupt -->
+            <!-- digitalInput ConfigUI hardwareInterrupt -->
 
             <Field id="hardwareInterrupt" type="checkbox" defaultValue="false"
                    visibleBindingId="ioDevType"
                    visibleBindingValue="(MCP23008, MCP23017, MCP23S08, MCP23S17)">
                 <Label>Enable Hardware Interrupt:</Label>
             </Field>
-
             <Field id="zzHardwareInterruptLabel" type="label" fontSize="small"
-                   fontColor="darkgray" alignWithControl="true"
+                   fontColor="darkgray" alignText="center"
                    visibleBindingId="hardwareInterrupt"
                    visibleBindingValue="true">
                 <Label>Enabling hardware interrupt raises a hardware interrupt output on an input state change.  The interrupt output must be connected to a GPIO input that is configured for callback and interrupt relay.</Label>
             </Field>
-
             <Field id="interruptRelayGPIO" type="menu"
                    visibleBindingId="hardwareInterrupt"
                    visibleBindingValue="true">
@@ -1292,62 +1190,67 @@ v0.8.0   3/20/2023  Change the device types for analog input and analog output
                       dynamicReload="yes"/>
             </Field>
 
-
-            <!-- ############       Digital Input Device       ############ -->
+            <!-- ############      Digital Input ConfigUI      ############ -->
             <!-- ############      5. Polling and Logging      ############ -->
 
-
-            <!-- digitalInput pollingSeparator -->
+            <!-- digitalInput ConfigUI pollingSeparator -->
 
             <Field id="zzPollingSeparator" type="separator"> </Field>
-
             <Field id="zzPollingTitle" type="label" alignText="center">
                 <Label>Select Polling and Logging Options</Label>
             </Field>
 
-
-            <!-- digitalInput polling -->
+            <!-- digitalInput ConfigUI polling -->
 
             <Field id="polling" type="checkbox" defaultValue="false">
                 <Label>Enable Input Polling:</Label>
             </Field>
-
             <Field id="zzPollingLabel" type="label" fontSize="small"
-                   fontColor="darkgray" alignWithControl="true">
-                <Label>Read the input state at regular intervals and logs it if it has changed.</Label>
+                   fontColor="darkgray" alignText="center">
+                <Label>Read the input state at regular intervals and log it if it has changed.</Label>
             </Field>
-
             <Field id="pollingInterval" type="textfield" defaultValue="0"
                    visibleBindingId="polling" visibleBindingValue="true">
                 <Label>Polling Interval (seconds):</Label>
             </Field>
-
             <Field id="zzPollingIntervalLabel" type="label" fontSize="small"
-                   fontColor="darkgray" alignWithControl="true"
+                   fontColor="darkgray" alignText="center"
                    visibleBindingId="polling" visibleBindingValue="true">
-                <Label>Setting the interval to 0 reads the input state in each pass through the run loop.  The actual polling interval depends on the run loop time.</Label>
+                 <Label>Setting the interval to 0 reads the input state in each pass through the run loop.
+                    The actual polling interval depends on the run loop time.</Label>
             </Field>
 
-
-            <!-- digitalInput logAll -->
+            <!-- digitalInput ConfigUI logAll -->
 
             <Field id="logAll" type="checkbox" defaultValue="false"
                    visibleBindingId="polling" visibleBindingValue="true">
                 <Label>Log All Polling Results:</Label>
             </Field>
-
             <Field id="zzLogAllLabel" type="label" fontSize="small"
-                   fontColor="darkgray" alignWithControl="true"
+                   fontColor="darkgray" alignText="center"
                    visibleBindingId="polling" visibleBindingValue="true">
-                <Label>Log the input state after each poll regardless of change.  By default, only changed states are logged.</Label>
+                <Label>Log the input state after each poll regardless of change.
+                    By default, only changed states are logged.</Label>
             </Field>
 
+            <!-- digitalInput ConfigUI monitorStatus -->
+
+            <Field id="monitorStatus" type="checkbox" defaultValue="false"
+                   visibleBindingId="polling" visibleBindingValue="true">
+                <Label>Monitor Polling Status:</Label>
+            </Field>
+            <Field id="zzMonitorStatusLabel" type="label" fontSize="small"
+                   fontColor="darkgray" alignText="center"
+                   visibleBindingId="polling" visibleBindingValue="true">
+                <Label>Compute and log the average polling interval and rate over the period of the status interval.</Label>
+            </Field>
+            <Field id="statusInterval" type="textfield" defaultValue="10.0"
+                   visibleBindingId="monitorStatus" visibleBindingValue="true">
+                <Label>Status Monitoring Interval (minutes):</Label>
+            </Field>
 
         </ConfigUI>
-
-
     </Device>
-
 
     <!-- ################################################################## -->
     <!-- #                                                                # -->
@@ -1355,15 +1258,12 @@ v0.8.0   3/20/2023  Change the device types for analog input and analog output
     <!-- #                                                                # -->
     <!-- ################################################################## -->
 
-
     <Device id="digitalOutput" type="relay">
         <Name>Digital Output</Name>
         <ConfigUI>
 
-
-            <!-- ############       Digital Output Device      ############ -->
+            <!-- ############     Digital Output ConfigUI      ############ -->
             <!-- ############       1. Raspberry Pi Host       ############ -->
-
 
             <!-- digitalOutput hostTitle -->
 
@@ -1371,48 +1271,40 @@ v0.8.0   3/20/2023  Change the device types for analog input and analog output
                 <Label>Select Raspberry Pi Host</Label>
             </Field>
 
-
-             <!-- digitalOutput hostAddress -->
+             <!-- digitalOutput ConfigUI hostAddress -->
 
             <Field id="hostAddress" type="textfield"
                    defaultValue="raspi4b-io.local">
                 <Label>Host Address (FQDN or IPv4):</Label>
             </Field>
 
-
-            <!-- digitalOutput portNumber -->
+            <!-- digitalOutput ConfigUI portNumber -->
 
             <Field id="portNumber" type="textfield" defaultValue="8888">
                 <Label>Port Number (1024-65535):</Label>
             </Field>
 
-
-             <!-- digitalOutput hostId -->
+             <!-- digitalOutput ConfigUI hostId -->
 
             <Field id="hostId" type="textfield" defaultValue="">
                 <Label>Host Id:</Label>
             </Field>
-
             <Field id="zzHostIdLabel" type="label" fontSize="small"
-                   fontColor="darkgray" alignWithControl="true">
-                <Label>The Host Id is a short, unique code that is used to compactly identify the host in Indigo.  It may be user specified or left blank for automatic assignment. Automatically assigned id's are extracted from the host FQDN ("name-id.domainName"), or simply set to "pi".</Label>
+                   fontColor="darkgray" alignText="center">
+                <Label>The Host Id is a short, unique code that is used to compactly identify the host.  It may be user specified or automatically assigned from the FQDN (name-id.domainName).</Label>
             </Field>
 
-
-            <!-- ############      Digital Output Device       ############ -->
+            <!-- ############     Digital Output ConfigUI      ############ -->
             <!-- ############  2. Device Type and Channel Id   ############ -->
 
-
-             <!-- digitalOutput selectionSeparator -->
+             <!-- digitalOutput ConfigUI selectionSeparator -->
 
             <Field id="zzSelectionSeparator" type="separator"> </Field>
-
             <Field id="zzSelectionTitle" type="label" alignText="center">
                 <Label>Select Digital Output Device and GPIO Bit / Relay</Label>
             </Field>
 
-
-             <!-- digitalOutput ioDevType -->
+             <!-- digitalOutput ConfigUI ioDevType -->
 
             <Field id="ioDevType" type="menu" defaultValue="pigpio">
                 <Label>Digital Output Device:</Label>
@@ -1426,8 +1318,7 @@ v0.8.0   3/20/2023  Change the device types for analog input and analog output
                 </List>
             </Field>
 
-
-             <!-- digitalOutput gpioNumber -->
+             <!-- digitalOutput ConfigUI gpioNumber -->
 
             <Field id="gpioNumber" type="menu" defaultValue="17"
                    visibleBindingId="ioDevType" visibleBindingValue="pigpio">
@@ -1453,11 +1344,9 @@ v0.8.0   3/20/2023  Change the device types for analog input and analog output
                 </List>
             </Field>
 
-
-            <!-- digitalOutput i2cAddress -->
+            <!-- digitalOutput ConfigUI i2cAddress -->
 
             <Field id="i2cAddress" type="textfield"  hidden="true"> </Field>
-
             <Field id="i2cAddress4" type="menu" defaultValue="0x10"
                    visibleBindingId="ioDevType" visibleBindingValue="dkrPiRly">
                 <Label>I2C Address:</Label>
@@ -1468,7 +1357,6 @@ v0.8.0   3/20/2023  Change the device types for analog input and analog output
                     <Option value="0x13">0x13</Option>
                 </List>
             </Field>
-
             <Field id="i2cAddress8" type="menu" defaultValue="0x20"
                    visibleBindingId="ioDevType"
                    visibleBindingValue="(MCP23008, MCP23017)">
@@ -1485,8 +1373,7 @@ v0.8.0   3/20/2023  Change the device types for analog input and analog output
                 </List>
             </Field>
 
-
-            <!--  digitalOutput relayNumber  -->
+            <!--  digitalOutput ConfigUI relayNumber  -->
 
             <Field id="relayNumber" type="menu" defaultValue="1"
                    visibleBindingId="ioDevType" visibleBindingValue="dkrPiRly">
@@ -1499,8 +1386,7 @@ v0.8.0   3/20/2023  Change the device types for analog input and analog output
                 </List>
             </Field>
 
-
-            <!-- digitalOutput spiChannel -->
+            <!-- digitalOutput ConfigUI spiChannel -->
 
             <Field id="spiChannel" type="menu" visibleBindingId="ioDevType"
                    visibleBindingValue="(MCP23S08, MCP23S17)">
@@ -1511,11 +1397,9 @@ v0.8.0   3/20/2023  Change the device types for analog input and analog output
                 </List>
             </Field>
 
-
-            <!-- digitalOutput spiDevAddress -->
+            <!-- digitalOutput ConfigUI spiDevAddress -->
 
             <Field id="spiDevAddress" type="textfield" hidden="true"> </Field>
-
             <Field id="spiDevAddress4" type="menu" defaultValue="0x20"
                    visibleBindingId="ioDevType" visibleBindingValue="MCP23S08">
                 <Label>SPI Device Address:</Label>
@@ -1526,7 +1410,6 @@ v0.8.0   3/20/2023  Change the device types for analog input and analog output
                     <Option value="0x23">0x23</Option>
                 </List>
             </Field>
-
             <Field id="spiDevAddress8" type="menu" defaultValue="0x20"
                    visibleBindingId="ioDevType" visibleBindingValue="MCP23S17">
                 <Label>SPI Device Address:</Label>
@@ -1542,8 +1425,7 @@ v0.8.0   3/20/2023  Change the device types for analog input and analog output
                 </List>
             </Field>
 
-
-            <!-- digitalOutput ioPort -->
+            <!-- digitalOutput ConfigUI ioPort -->
 
             <Field id="ioPort" type="menu" defaultValue="a"
                    visibleBindingId="ioDevType"
@@ -1555,8 +1437,7 @@ v0.8.0   3/20/2023  Change the device types for analog input and analog output
                 </List>
             </Field>
 
-
-            <!-- digitalOutput bitNumber -->
+            <!-- digitalOutput ConfigUI bitNumber -->
 
             <Field id="bitNumber" type="menu" defaultValue="0"
                    visibleBindingId="ioDevType"
@@ -1574,122 +1455,142 @@ v0.8.0   3/20/2023  Change the device types for analog input and analog output
                 </List>
             </Field>
 
-
-            <!-- ##############     Digital Output Device    ############## -->
+            <!-- ############     Digital Output ConfigUI      ############ -->
             <!-- ##############   3. Device Configuration    ############## -->
 
-
-            <!-- digitalOutput configSeparator -->
+            <!-- digitalOutput ConfigUI configSeparator -->
 
             <Field id="zzConfigSeparator" type="separator"> </Field>
-
             <Field id="zzConfigTitle" type="label" alignText="center">
                 <Label>Configure Digital Output</Label>
             </Field>
 
-
-            <!-- digitalOutput momentary -->
+            <!-- digitalOutput ConfigUI momentary -->
 
             <Field id="momentary" type="checkbox" defaultValue="false">
                 <Label>Momentary Turn-on:</Label>
             </Field>
-
             <Field id="turnOffDelay" type="textfield" defaultValue="0"
                    visibleBindingId="momentary" visibleBindingValue="true">
                 <Label>Turn-off Delay (0-10 seconds):</Label>
             </Field>
-
             <Field id="zzDelayLabel" type="label" fontSize="small"
-                   fontColor="darkgray" alignWithControl="true"
+                   fontColor="darkgray" alignText="center"
                    visibleBindingId="momentary" visibleBindingValue="true">
                 <Label>A turn-off delay of 0 seconds results in an actual delay of about 0.25 seconds.</Label>
             </Field>
 
-
-            <!-- digitalOutput pwm -->
+            <!-- digitalOutput ConfigUI pwm -->
 
             <Field id="pwm" type="checkbox" defaultValue="false"
                    visibleBindingId="ioDevType" visibleBindingValue="pigpio">
                 <Label>Pulse Width Modulation (PWM):</Label>
             </Field>
-
             <Field id="frequency" type="textfield" defaultValue="100"
                    visibleBindingId="pwm" visibleBindingValue="true">
                 <Label>PWM Frequency (1-8000 Hertz):</Label>
             </Field>
-
             <Field id="zzFrequencyLabel" type="label" fontSize="small"
-                   fontColor="darkgray" alignWithControl="true"
+                   fontColor="darkgray" alignText="center"
                    visibleBindingId="pwm" visibleBindingValue="true">
                 <Label>The frequency actually used will be one of 16 discrete values that is closest to the frequency specified.  See the pigpio library documentation.</Label>
             </Field>
-
             <Field id="dutyCycle" type="textfield" defaultValue="50"
                    visibleBindingId="pwm" visibleBindingValue="true">
                 <Label>PWM Duty Cycle (0-100 percent):</Label>
             </Field>
 
-            <!-- digitalOutput bitRate -->
+            <!-- digitalOutput ConfigUI bitRate -->
 
-            <Field id="bitRate" type="textfield" defaultValue="2000"
-                   visibleBindingId="ioDevType" visibleBindingValue="(MCP23S08, MCP23S17)">
-                <Label>SPI Bit Rate (100-10000 kb/s):</Label>
+            <Field id="bitRate" type="textfield" defaultValue="10.0"
+                   visibleBindingId="ioDevType"
+                   visibleBindingValue="(MCP23S08, MCP23S17)">
+                <Label>SPI Bit Rate (0.1-10.0 Mb/s):</Label>
             </Field>
-
             <Field id="zzBitRateLabel" type="label" fontSize="small"
-                   fontColor="darkgray" alignWithControl="true">
-                <Label>SPI bus data transfer rate for this device.  The bit rate in kb/s is usually equal to the SPI clock rate in kHz.</Label>
+                   fontColor="darkgray" alignText="center"
+                   visibleBindingId="ioDevType"
+                   visibleBindingValue="(MCP23S08, MCP23S17)">
+                <Label>Specify the SPI data transfer rate for this device.
+                    The bit rate in Mb/s is equal to the SPI clock rate in MHz.</Label>
             </Field>
 
+            <!-- digitalOutput ConfigUI checkSPI -->
 
-            <!-- ############      Digital Output Device       ############ -->
+            <Field id="checkSPI" type="checkbox" defaultValue="false"
+                    visibleBindingId="ioDevType"
+                    visibleBindingValue="(MCP23S08, MCP23S17)">
+                <Label>Check SPI Integrity:</Label>
+            </Field>
+            <Field id="checkLabel" type="label" fontSize="small"
+                   fontColor="darkgray" alignText="center"
+                   visibleBindingId="ioDevType"
+                   visibleBindingValue="(MCP23S08, MCP23S17)">
+                <Label>Check SPI integrity by repeating each SPI device read.
+                    Log a warning if the consecutive reads differ.
+                    If this persists, the SPI bit rate may be too high for the device.</Label>
+            </Field>
+
+            <!-- ############     Digital Output ConfigUI      ############ -->
             <!-- ############      5. Polling and Logging      ############ -->
 
+            <!-- digitalOutput ConfigUI pollingSeparator -->
 
-            <!-- digitalOutput loggingSeparator -->
-
-            <Field id="zzLoggingSeparator" type="separator"> </Field>
-
-            <Field id="zzLoggingTitle" type="label" alignText="center">
-                <Label>Select Logging Options</Label>
+            <Field id="zzPollingSeparator" type="separator"> </Field>
+            <Field id="zzPollingTitle" type="label" alignText="center">
+                <Label>Select Polling and Logging Options</Label>
             </Field>
 
-
-            <!-- digitalOutput polling -->
+            <!-- digitalOutput ConfigUI polling -->
 
             <Field id="polling" type="checkbox" defaultValue="false">
-                <Label>Enable Output Logging:</Label>
+                <Label>Enable Output Polling:</Label>
             </Field>
-
             <Field id="zzPollingLabel" type="label" fontSize="small"
-                   fontColor="darkgray" alignWithControl="true">
-                <Label>Log the output state at regular intervals.</Label>
+                   fontColor="darkgray" alignText="center">
+                <Label>Read the output state at regular intervals and log it if it has changed.</Label>
             </Field>
-
-            <Field id="pollingInterval" type="textfield" defaultValue="10"
+            <Field id="pollingInterval" type="textfield" defaultValue="0"
                    visibleBindingId="polling" visibleBindingValue="true">
-                <Label>Logging Interval (seconds):</Label>
+                <Label>Polling Interval (seconds):</Label>
             </Field>
-
             <Field id="zzPollingIntervalLabel" type="label" fontSize="small"
-                   fontColor="darkgray" alignWithControl="true"
+                   fontColor="darkgray" alignText="center"
                    visibleBindingId="polling" visibleBindingValue="true">
-                <Label>Setting the interval to 0 logs the output state in each pass through the run loop.  The actual logging interval depends on the run loop time.</Label>
+                 <Label>Setting the interval to 0 reads the output state in each pass through the run loop.
+                    The actual polling interval depends on the run loop time.</Label>
             </Field>
 
+            <!-- digitalOutput ConfigUI logAll -->
 
-            <!-- digitalOutput logAll -->
-
-            <Field id="logAll" type="checkbox" defaultValue="true"
-                   hidden="true">
+            <Field id="logAll" type="checkbox" defaultValue="false"
+                   visibleBindingId="polling" visibleBindingValue="true">
+                <Label>Log All Polling Results:</Label>
+            </Field>
+            <Field id="zzLogAllLabel" type="label" fontSize="small"
+                   fontColor="darkgray" alignText="center"
+                   visibleBindingId="polling" visibleBindingValue="true">
+                <Label>Log the output state after each poll regardless of change.
+                    By default, only changed states are logged.</Label>
             </Field>
 
+            <!-- digitalOutput ConfigUI monitorStatus -->
+
+            <Field id="monitorStatus" type="checkbox" defaultValue="false"
+                   visibleBindingId="polling" visibleBindingValue="true">
+                <Label>Monitor Polling Status:</Label>
+            </Field>
+            <Field id="zzMonitorStatusLabel" type="label" fontSize="small"
+                   fontColor="darkgray" alignText="center"
+                   visibleBindingId="polling" visibleBindingValue="true">
+                <Label>Compute and log the average polling interval and rate over the period of the status interval.</Label>
+            </Field>
+            <Field id="statusInterval" type="textfield" defaultValue="10.0"
+                   visibleBindingId="monitorStatus" visibleBindingValue="true">
+                <Label>Status Monitoring Interval (minutes):</Label>
+            </Field>
 
         </ConfigUI>
-
-
     </Device>
-
-
 </Devices>
 
