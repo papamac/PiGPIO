@@ -1,8 +1,16 @@
 <?xml version="1.0"?>
 <!--
- PACKAGE:  Raspberry Pi General Purpose Input/Output for Indigo
-  MODULE:  Devices.xml
-   TITLE:  Pi GPIO device definitions and ConfigUis (Devices.xml)
+###############################################################################
+#                                                                             #
+#                            Pi GPIO Indigo plugin                            #
+#                              FILE Devices.xml                               #
+#                                                                             #
+###############################################################################
+
+  BUNDLE:  Raspberry Pi General Purpose Input/Output for Indigo
+           (Pi GPIO.indigoPlugin)
+    FILE:  Devices.xml
+   TITLE:  Pi GPIO device definitions and ConfigUis
 FUNCTION:  Devices.xml defines Pi GPIO device objects, specifies ConfigUis, and
            sets default values for device properties.
    USAGE:  Devices.xml is read and interpreted by the indigo server during

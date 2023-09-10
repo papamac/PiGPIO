@@ -1,8 +1,16 @@
 <?xml version="1.0"?>
 <!--
- PACKAGE:  Raspberry Pi General Purpose Input/Output for indigo
-  MODULE:  Actions.xml
-   TITLE:  PiGPIO actions (Actions.xml)
+###############################################################################
+#                                                                             #
+#                            Pi GPIO Indigo plugin                            #
+#                              FILE Actions.xml                               #
+#                                                                             #
+###############################################################################
+
+  BUNDLE:  Raspberry Pi General Purpose Input/Output for Indigo
+           (Pi GPIO.indigoPlugin)
+    FILE:  Actions.xml
+   TITLE:  PiGPIO actions
 FUNCTION:  Actions.xml defines PiGPIO action objects and specifies action
            callback methods.
    USAGE:  Actions.xml is read and interpreted by the indigo server during

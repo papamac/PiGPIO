@@ -1,8 +1,16 @@
 <?xml version="1.0"?>
 <!--
- PACKAGE:  Raspberry Pi General Purpose Input/Output for Indigo
-  MODULE:  PluginConfig.xml
-   TITLE:  Define and initialize options (PluginConfig.xml)
+###############################################################################
+#                                                                             #
+#                            Pi GPIO Indigo plugin                            #
+#                            FILE PluginConfig.xml                            #
+#                                                                             #
+###############################################################################
+
+  BUNDLE:  Raspberry Pi General Purpose Input/Output for Indigo
+           (Pi GPIO.indigoPlugin)
+    FILE:  PluginConfig.xml
+   TITLE:  Define and initialize plugin options
 FUNCTION:  PluginConfig.xml defines plugin preferences, specifies ConfigUis,
            and sets default preference values.
    USAGE:  PluginConfig.xml is read and interpreted by the indigo server during

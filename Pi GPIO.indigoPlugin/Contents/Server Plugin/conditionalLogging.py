@@ -1,27 +1,25 @@
 # coding=utf-8
-###############################################################################
-#                                                                             #
-#                       MODULE conditionalLogging.py                          #
-#                                                                             #
-###############################################################################
 """
- PACKAGE:  Raspberry Pi General Purpose Input/Output for Indigo
+###############################################################################
+#                                                                             #
+#                            Pi GPIO Indigo plugin                            #
+#                        MODULE conditionalLogging.py                         #
+#                                                                             #
+###############################################################################
+
+  BUNDLE:  Raspberry Pi General Purpose Input/Output for Indigo
+           (Pi GPIO.indigoPlugin)
   MODULE:  conditionalLogging.py
    TITLE:  Conditional logging by message type
-FUNCTION:  conditionalLogging.py
-
- ****************************** needs work *************************************
-
-           provides classes to define and manage five
-           different categories of Pi GPIO devices.  Each class initializes,
-           configures, starts, and stops io device objects for each Indigo
-           device.  Class methods also execute device actions and update
-           device states.
-   USAGE:  pigpioDevices.py is included by the primary plugin class,
-           Plugin.py.  Its methods are called as needed by Plugin.py methods.
+FUNCTION:  conditionalLogging.py provides optional logging of four message
+           types (analog, digital, resource, and startStop) based on user
+           selections in the plugin.py pluginPrefs.
+   USAGE:  conditionalLogging.py is included by the two primary plugin modules,
+           plugin.py and pigpioDevices.py  Its methods are called as needed by
+           module functions and methods.
   AUTHOR:  papamac
- VERSION:  0.7.2
-    DATE:  March 5, 2023
+ VERSION:  0.9.2
+    DATE:  September 10, 2023
 
 UNLICENSE:
 
@@ -50,32 +48,43 @@ OTHER DEALINGS IN THE SOFTWARE.
 
 For more information, please refer to <http://unlicense.org/>
 
-Pi GPIO SUMMARY DESCRIPTION:
+Pi GPIO PLUGIN BUNDLE DESCRIPTION:
 
-Raspberry Pi is a powerful credit card sized computer with extensive General
-Purpose Input/Output (GPIO) capabilities that make it an ideal addition to an
-Indigo Home Automation System.  Physical analog and digital input/output
-devices, hosted on the Pi, are linked to Indigo device objects, giving Indigo
-the ability to sense the real world and manage it in near real time.  One or
-more Pi's connect to the Indigo host via wired or wireless ethernet.  Each Pi
-runs a pigpio daemon (written by joan2937) that manages the interface between
-the Pi GPIO's and this Pi GPIO plugin.
+The Pi GPIO plugin bundle has two primary Python modules/classes: plugin.py
+encapsulates the Indigo device behavior in the Plugin class and
+pigpioDevices.py encapsulates detailed Raspberry Pi GPIO device behavior in the
+PiGPIODevice class and its six subclasses.  A PiGPIODevice subclass instance is
+created for each Indigo device defined by plugin.py.  The plugin bundle
+contains two supporting Python modules: pigpio.pi with classes/methods to
+access the pigpio server daemon and conditionalLogging.py to provide flexible
+Indigo logging by message type and logging level.  It also includes several xml
+files that define Indigo GUIs, actions, and events.
 
-See the README.md file in the top level PiGPIO folder for more functional
-details and operating instructions.  For details on the Raspberry Pi, its GPIO
-system, and joan2937's amazing pigpio library, please refer to:
+MODULE conditionalLogging.py DESCRIPTION:
 
-RPi computers:      <https://www.raspberrypi.com/products/
-RPi OS:             <https://www.raspberrypi.com/software/>
-RPi official doc's: <https://www.raspberrypi.com/documentation/computers/>
-RPi GPIO system :   <https://www.raspberrypi.com/documentation/computers
-                     /os.html#gpio-and-the-40-pin-header>
-pigpio library:     <https://abyz.me.uk/rpi/pigpio/>
-pigpio code:        <https://github.com/joan2937/pigpio/>
+The PluginConfig.xml defines four types of messages that are conditionally
+logged by the pigpioDevices.py module: analog, digital, resource, and
+startStop.  The pluginPrefs ConfigUi allows the user to select one or more of
+these message types for optional logging.  Messages are logged only if they are
+selected.  Some are logged at the DEBUG logging level and some are logged at
+the INFO level.  With the ability to filter logged messages by both message
+type and logging level, the user can flexibly configure the log to meet his
+needs.  This is most helpful with detailed debug messages.
 
-DEPENDENCIES/LIMITATIONS:
+The conditionalLogging.py module provides two classes with methods to implement
+this flexible logging feature.  The LD class has methods LD.analog, LD.digital,
+LD.resource, and LD.startStop to log each of the message types at the DEBUG
+logging level.  Similarly, the LI class has methods to log each of the message
+types at the INFO level.  These classes and methods are called by functions and
+methods in the pigpioDevices.py module as appropriate.
 
-****************************** needs work *************************************
+The LD and LI classes each have an init method to allow their other methods to
+access the plugin.py module's pluginPrefs.  The Plugin class __init__ method
+calls LD.init and LI.init with the plugin instance object as an argument.
+LD.init and LI.init save the plugin object as a class constant named PLUGIN.
+The message type methods can then access LD.PLUGIN.pluginPrefs or
+LI.PLUGIN.pluginPrefs to obtain the currently selected message types from the
+list pluginPrefs['loggingMessageTypes'].
 
 CHANGE LOG:
 
@@ -84,6 +93,12 @@ top level bundle directory.  Changes of lesser importance may be described in
 individual module docstrings if appropriate.
 
 v0.7.2    3/5/2023  Add conditional logging by message type.
+v0.9.2   9/10/2023  (1) Add init methods to classes LD and LI to capture the
+                    plugin object from plugin.py object initialization.  Use
+                    the plugin object in LD and LI methods to directly access
+                    pluginPrefs.
+                    (2) Update module docstring in preparation for initial
+                    release.
 """
 ###############################################################################
 #                                                                             #
@@ -93,13 +108,12 @@ v0.7.2    3/5/2023  Add conditional logging by message type.
 ###############################################################################
 
 __author__ = 'papamac'
-__version__ = '0.7.2'
-__date__ = '3/5/2023'
+__version__ = '0.9.2'
+__date__ = '9/10/2023'
 
 from logging import getLogger
 
 L = getLogger("Plugin")        # Use the Indigo Plugin logger.
-LOGGING_MESSAGE_TYPES = ['analog', 'digital', 'resource', 'startStop']
 
 
 ###############################################################################
@@ -110,27 +124,36 @@ LOGGING_MESSAGE_TYPES = ['analog', 'digital', 'resource', 'startStop']
 ###############################################################################
 
 class LD:
-    """"
-    Methods for conditional debug logging by message type.
-    """
-    @staticmethod  # Analog device debug logging.
+    """" Methods for conditional debug logging by message type. """
+    PLUGIN = None
+
+    @staticmethod
+    def init(plugin):
+        """ Save the plugin instance object for use by other methods. """
+        LD.PLUGIN = plugin
+
+    @staticmethod
     def analog(message, *args, **kwargs):
-        if 'analog' in LOGGING_MESSAGE_TYPES:
+        """ Log analog messages if requested in pluginPrefs """
+        if 'analog' in LD.PLUGIN.pluginPrefs['loggingMessageTypes']:
             L.debug(message, *args, **kwargs)
 
-    @staticmethod  # Digital device debug logging.
+    @staticmethod
     def digital(message, *args, **kwargs):
-        if 'digital' in LOGGING_MESSAGE_TYPES:
+        """ Log digital messages if requested in pluginPrefs """
+        if 'digital' in LD.PLUGIN.pluginPrefs['loggingMessageTypes']:
             L.debug(message, *args, **kwargs)
 
-    @staticmethod  # pigpiod resource management debug logging.
+    @staticmethod
     def resource(message, *args, **kwargs):
-        if 'resource' in LOGGING_MESSAGE_TYPES:
+        """ Log resource messages if requested in pluginPrefs """
+        if 'resource' in LD.PLUGIN.pluginPrefs['loggingMessageTypes']:
             L.debug(message, *args, **kwargs)
 
-    @staticmethod  # Starting/stopping debug logging.
+    @staticmethod
     def startStop(message, *args, **kwargs):
-        if 'startStop' in LOGGING_MESSAGE_TYPES:
+        """ Log startStop messages if requested in pluginPrefs """
+        if 'startStop' in LD.PLUGIN.pluginPrefs['loggingMessageTypes']:
             L.debug(message, *args, **kwargs)
 
 
@@ -142,10 +165,34 @@ class LD:
 ###############################################################################
 
 class LI:
-    """"
-    Methods for conditional info logging by message type.
-    """
-    @staticmethod  # Starting info logging.
+    """" Methods for conditional info logging by message type. """
+    PLUGIN = None
+
+    @staticmethod
+    def init(plugin):
+        """ Save the plugin instance object for use by other methods. """
+        LI.PLUGIN = plugin
+
+    @staticmethod
+    def analog(message, *args, **kwargs):
+        """ Log analog messages if requested in pluginPrefs """
+        if 'analog' in LI.PLUGIN.pluginPrefs['loggingMessageTypes']:
+            L.info(message, *args, **kwargs)
+
+    @staticmethod
+    def digital(message, *args, **kwargs):
+        """ Log digital messages if requested in pluginPrefs """
+        if 'digital' in LI.PLUGIN.pluginPrefs['loggingMessageTypes']:
+            L.info(message, *args, **kwargs)
+
+    @staticmethod
+    def resource(message, *args, **kwargs):
+        """ Log resource messages if requested in pluginPrefs """
+        if 'resource' in LI.PLUGIN.pluginPrefs['loggingMessageTypes']:
+            L.info(message, *args, **kwargs)
+
+    @staticmethod
     def startStop(message, *args, **kwargs):
-        if 'startStop' in LOGGING_MESSAGE_TYPES:
+        """ Log startStop messages if requested in pluginPrefs """
+        if 'startStop' in LI.PLUGIN.pluginPrefs['loggingMessageTypes']:
             L.info(message, *args, **kwargs)

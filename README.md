@@ -3,10 +3,11 @@
 # Raspberry Pi General Purpose Input/Output for indigo
 
 Raspberry Pi is a powerful credit card sized computer with extensive General
-Purpose Input/Output (GPIO) capabilities that make it an ideal addition to an
-Indigo Home Automation System.  Physical analog and digital input/output
-devices, hosted on the pi, are linked to Pi GPIO plugin devices. These give
-Indigo the ability to sense the real world and manage it in near real time.
+Purpose Input/Output (GPIO) capabilities.  The Pi GPIO plugin allows Indigo to
+access these capabilities using standard Indigo devices.  Physical analog and
+digital input/output devices, hosted on the Pi, are linked to Indigo device
+objects, giving Indigo the ability to sense the real world and manage it in
+near real time.
 
 The Pi GPIO plugin can poll input devices at a user-specified rate, or it can
 utilize interrupts/callbacks if available for that device. One or more pi hosts

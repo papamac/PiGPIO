@@ -1,18 +1,21 @@
 # coding=utf-8
+"""
 ###############################################################################
 #                                                                             #
+#                            Pi GPIO Indigo plugin                            #
 #                              MODULE pigpio.py                               #
 #                                                                             #
 ###############################################################################
-"""
- PACKAGE:  Raspberry Pi General Purpose Input/Output for Indigo
+
+  BUNDLE:  Raspberry Pi General Purpose Input/Output for Indigo
+           (Pi GPIO.indigoPlugin)
   MODULE:  pigpio.py
    TITLE:  pigpio Python library
 FUNCTION:  pigpio.py is a library of Python classes and methods that interfaces
-           with the pigpio daemon running on the Raspberry Pi to  control the
-           Pi's GPIO capabilities.
-   USAGE:  pigpio.py is included by the pigpioDevices module.  Its methods are
-           called to perform low level GPIO operations to implement higher
+           with the Raspberry Pi's pigpio daemon to control the Pi's GPIO
+           hardware.
+   USAGE:  pigpio.py is included by the pigpioDevices.py module.  Its methods
+           are called to perform low level GPIO operations to implement higher
            level Pi GPIO device functionality.
   AUTHOR:  joan2937
  VERSION:  v79
@@ -48,7 +51,7 @@ For more information, please refer to <http://unlicense.org/>
 
 DESCRIPTION:
 
-[http://abyz.me.uk/rpi/pigpio/python.html]
+See the documentation at http://abyz.me.uk/rpi/pigpio/python.html
 
 *Features*
 
