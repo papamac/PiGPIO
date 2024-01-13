@@ -17,7 +17,7 @@ FUNCTION:  pigpioDevices.py provides classes to define and manage six types
            plugin.py.  Its methods are called as needed by plugin.py methods.
   AUTHOR:  papamac
  VERSION:  0.9.2
-    DATE:  September 10, 2023
+    DATE:  September 12, 2023
 
 UNLICENSE:
 
@@ -157,14 +157,13 @@ v0.9.2   9/12/2023  (1) Refactor resource management methods (again!) to
 """
 ###############################################################################
 #                                                                             #
-#                          MODULE pigpioDevices.py                            #
 #                   DUNDERS, IMPORTS, and GLOBAL Constants                    #
 #                                                                             #
 ###############################################################################
 
 __author__ = 'papamac'
-__version__ = '0.9.1'
-__date__ = '6/17/2023'
+__version__ = '0.9.2'
+__date__ = '9/12/2023'
 
 import indigo
 

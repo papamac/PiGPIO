@@ -16,8 +16,8 @@ FUNCTION:  plugin.py defines the Plugin class, with standard methods that
    USAGE:  plugin.py is included in the Pi GPIO.indigoPlugin bundle and its
            methods are called by the Indigo server.
   AUTHOR:  papamac
- VERSION:  0.9.2
-    DATE:  September 10, 2023
+ VERSION:  0.9.3
+    DATE:  December 7, 2023
 
 UNLICENSE:
 
@@ -81,12 +81,12 @@ files that define Indigo GUIs, actions, and events.
 
 MODULE plugin.py DESCRIPTION:
 
-plugin.py defines the Plugin class whose methods provide entry points into the
-plugin from the Indigo Plugin Host.  These methods, with access to the Indigo
-server's object database, manage the definition, validation, instantiation, and
-concurrent execution of Pi GPIO device objects.  plugin.py instantiates a
-PiGPIODevice subclass object for each Indigo device and invokes PiGPIODevice
-object methods to perform detailed device functions.
+The plugin.py module defines the Plugin class whose methods provide entry
+points into the plugin from the Indigo Plugin Host.  These methods, with access
+to the Indigo server's object database, manage the definition, validation,
+instantiation, and concurrent execution of Pi GPIO device objects.  Plugin
+methods instantiate a PiGPIODevice subclass object for each Indigo device and
+invoke PiGPIODevice object methods to perform detailed device functions.
 
 DEPENDENCIES/LIMITATIONS:
 
@@ -154,17 +154,18 @@ v0.8.1   5/13/2023  (1) Update validation of spi bitRate for MCP320X devices.
                     (4) Add method docstrings for most methods.
                     (5) Update module docstring in preparation for initial
                     release.
+v0.9.3   12/7/2023  Fix pluginPrefs key error when starting the plugin for the
+                    first time.
 """
 ###############################################################################
 #                                                                             #
-#                             MODULE plugin.py                                #
 #                       DUNDERS, IMPORTS, and GLOBALS                         #
 #                                                                             #
 ###############################################################################
 
 __author__ = 'papamac'
-__version__ = '0.9.2'
-__date__ = '9/10/2023'
+__version__ = '0.9.3'
+__date__ = '12/7/2023'
 
 import indigo
 
@@ -180,7 +181,6 @@ ON, OFF = (1, 0)         # on/off states.
 
 ###############################################################################
 #                                                                             #
-#                             MODULE plugin.py                                #
 #                               CLASS Plugin                                  #
 #                                                                             #
 ###############################################################################
@@ -229,8 +229,8 @@ class Plugin(indigo.PluginBase):
         """
         indigo.PluginBase.__init__(self, pluginId, pluginDisplayName,
                                    pluginVersion, pluginPrefs)
-        self.indigo_log_handler.setLevel(NOTSET)
-        level = pluginPrefs['loggingLevel']
+        self.indigo_log_handler.setLevel(NOTSET)  # Eliminate handler level.
+        level = pluginPrefs.get('loggingLevel', 'INFO')
         L.setLevel('THREADDEBUG' if level == 'THREAD' else level)
         L.threaddebug('__init__ called')
         LD.init(self)
