@@ -1,4 +1,4 @@
-![](https://raw.githubusercontent.com/papamac/PiGPIO/master/files/raspi4b.png)
+![](https://raw.githubusercontent.com/papamac/PiGPIO/master/files/rpi4.png)
 
 # Raspberry Pi General Purpose Input/Output for indigo
 
@@ -10,9 +10,9 @@ objects, giving Indigo the ability to sense the real world and manage it in
 near real time.
 
 The Pi GPIO plugin can poll input devices at a user-specified rate, or it can
-utilize interrupts/callbacks if available for that device. One or more pi hosts
+utilize interrupts/callbacks if available for the device. One or more pi hosts
 connect to the Indigo plugin via wired or wireless ethernet. Each pi host runs
-a **_pigpio server_** daemon that performs the physical I/O and manages the
+an **_rgpio server_** daemon that performs the physical I/O and manages the
 interface to the plugin.
 
 Each pi has 40 header pins with 27 GPIO pins that are available for digital I/O
@@ -38,10 +38,15 @@ The following table lists the top level requirements for the Pi GPIO plugin:
 | Indigo                                      | Version 2022.1 or later                                                                                                                        |
 | Python Library (API)                        | Official (3.X)                                                                                                                                 |
 | Macintosh computer<br/>for pi configuration | Large display preferred<br/>SD card reader                                                                                                     |
-| Raspberry Pi                                | 4 model b with 1 GB RAM or more<br/>microSD card with 16 GB or more, U3 / A2 rated<br/>5V / 3A USB-C power adapter                             |
+| Raspberry Pi                                | Model 4 or 5 with 1 GB RAM or more<br/>microSD card with 16 GB or more, U3 / A2 rated<br/>5V USB-C power adapter for the rpi model chosen      |
 | Local Network                               | Wired network preferred (1000 Mb/sec)<br/>Wireless OK if faster than 50 Mb/sec                                                                 |
 | Internet                                    | At least 25 Mb/sec for software downloads                                                                                                      |
 | Hardware Interfaces                         | Raspberry Pi GPIO pins<br/>Pi I/O devices and HATs from the [supported devices](https://github.com/papamac/PiGPIO/wiki/Supported-Devices) list |
+
+The Pi GPIO plugin fully supports the new Raspberry Pi 5. It utilizes the 
+latest Raspberry Pi OS based on the Debian bookworm distribution. Access to the
+GPIO pins is provided by the rgpio daemon in the [lg archive](https://abyz.me.uk/lg/index.html)
+written by [joan2937](https://github.com/joan2937/lg).
 
 Please see the [Pi GPIO wiki](https://github.com/papamac/PiGPIO/wiki/Overview)
 for details on the design, configuration, and use of the plugin and its

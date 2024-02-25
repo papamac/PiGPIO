@@ -16,8 +16,8 @@ FUNCTION:  pigpioDevices.py provides classes to define and manage six types
    USAGE:  pigpioDevices.py is included by the primary plugin module,
            plugin.py.  Its methods are called as needed by plugin.py methods.
   AUTHOR:  papamac
- VERSION:  0.9.2
-    DATE:  September 12, 2023
+ VERSION:  0.10.0
+    DATE:  January 13, 2024
 
 UNLICENSE:
 
@@ -154,6 +154,8 @@ v0.9.2   9/12/2023  (1) Refactor resource management methods (again!) to
                     (3) Add method docstrings for most methods.
                     (4) Update module docstring in preparation for initial
                     release.
+v0.10.0  1/13/2024  Replace pigpio with rgpio to accommodate changes in
+                    Raspberry Pi 5.
 """
 ###############################################################################
 #                                                                             #
@@ -162,18 +164,18 @@ v0.9.2   9/12/2023  (1) Refactor resource management methods (again!) to
 ###############################################################################
 
 __author__ = 'papamac'
-__version__ = '0.9.2'
-__date__ = '9/12/2023'
+__version__ = '0.10.0'
+__date__ = '1/13/2024'
 
 import indigo
 
 from abc import ABC, abstractmethod
 from datetime import datetime
 from logging import getLogger
-from time import sleep
+import time
 
 from conditionalLogging import LD, LI
-import pigpio
+import rgpio
 
 # General global constants:
 
@@ -195,6 +197,14 @@ IO_DEV_CLASS = {
     'MCP4811':  'DAC12',          'MCP4812':  'DAC12',
     'MCP4821':  'DAC12',          'MCP4822':  'DAC12',
     'pigpio':   'PiGPIO'}
+
+# gpio chip numbers keyed by the Raspberry Pi model name.
+
+GPIO_CHIP = {
+    'Raspberry Pi 4 Model B':         0,
+    'Raspberry Pi 5 Model B':         4,
+    'Raspberry Pi Compute Module 4':  0,
+    'Raspberry Pi Zero 2 W':          0}
 
 ###############################################################################
 #                                                                             #
@@ -326,6 +336,7 @@ def _pigpioError(dev, errorType, errorMessage):
 #                          Public Module Functions                            #
 #                                                                             #
 # def getIoDev(dev, new=False)                                                #
+# def getRpiModel(connection)                                                 #
 # def logStartupSummary()                                                     #
 # def logShutdownSummary()                                                    #
 #                                                                             #
@@ -386,12 +397,32 @@ def getIoDev(dev, new=False):
     return ioDev  # return the io device object.
 
 
+def getRpiModel(connection):
+    """
+
+    """
+    model = None
+    if connection.connected:
+        rgpio.exceptions = False
+        cpuInfo = connection.file_open('/proc/cpuinfo', rgpio.FILE_READ)
+        if cpuInfo >= 0:
+            nb, bytes_ = connection.file_read(cpuInfo, 2000)
+            connection.file_close(cpuInfo)
+            if nb > 0:
+                b1 = bytes_.find(b'Model\t\t: ')
+                b2 = bytes_.find(b' Rev ')
+                if b1 != -1 and b2 != -1:
+                    model = str(bytes_[b1 + 9:b2], encoding='utf-8',
+                                errors='strict')
+        rgpio.exceptions = True
+    return model
+
 def logStartupSummary():
     """
     Log the number of io devices started and the number of pigpio resources
     used.
     """
-    L.info('%s io devices started using %s pigpio resources',
+    L.info('%s io devices started using %s rgpiod resources',
            len(_ioDevices), len(_resources))
 
 
@@ -404,10 +435,10 @@ def logShutdownSummary():
         L.info('All io devices stopped')
 
     if _resources:
-        L.warning('%s pigpio resources still reserved at shutdown',
+        L.warning('%s rgpiod resources still reserved at shutdown',
                   len(_resources))
     else:
-        L.info('All pigpio resources stopped/closed')
+        L.info('All rgpiod resources stopped/closed')
 
 
 ###############################################################################
@@ -520,17 +551,17 @@ class PiGPIODevice(ABC):
         # Initialize common internal instance attributes:
 
         self._dev = dev          # Indigo device reference.
-        self._c = None           # pigpiod connection object.
-        self._h = None           # i2c or spi handle.
-        self._hId = None         # i2c or spi handle id.
+        self._c = None           # rgpiod connection object.
+        self._h = None           # gpio, i2c or spi handle.
+        self._hId = None         # gpio, i2c or spi handle id.
         self._callbackId = None  # gpio callback identification object.
         self._pollCount = 0      # Poll count for polling status monitoring.
         self._lastPoll = self._lastStatus = indigo.server.getTime()
 
-        # Connect to the pigpio daemon and set internal connection attributes
+        # Connect to the rgpio daemon and set internal connection attributes
         # for use by all class/subclass methods.
 
-        self._c, self._cId = self._getConnection()
+        self._c, self._cId, self._gpioChip = self._getConnection()
 
         # Set the initial device state image to override power icon defaults
         # for digital output devices.
@@ -544,10 +575,10 @@ class PiGPIODevice(ABC):
         """
         A connection object establishes a connection to a specific pigpio
         daemon running on a specific pi host.  Connection object methods in the
-        pigpio library perform all input/output operations on individual gpio
+        rgpio library perform all input/output operations on individual gpio
         pins, i2c devices, and spi devices.
 
-        Create a pigpio connection id using the host id, host address, and port
+        Create a rgpio connection id using the host id, host address, and port
         number from the Indigo device pluginProps.  Get a connection object for
         this id from the resources dictionary.  If no connection exists, use
         the pigpio.pi module function to create a new one.  Reserve the
@@ -559,20 +590,48 @@ class PiGPIODevice(ABC):
         hostAddress = self._dev.pluginProps['hostAddress']
         portNumber = self._dev.pluginProps['portNumber']
         connectionId = hostId if hostId else hostAddress + ':' + portNumber
-
-        connection, useCount = _resources.get(connectionId, (None, 0))
+        connection, useCount, gpioChip = _resources.get(connectionId,
+                                                        (None, 0, None))
         if not connection:  # No existing connection; create a new one.
             LD.resource('"%s" connecting to %s', self._dev.name, connectionId)
-            connection = pigpio.pi(hostAddress, portNumber)
+            connection = rgpio.sbc(hostAddress, int(portNumber))
             if not connection.connected:  # Connection failed.
-                connection.stop()  # Release any pigpiod resources immediately.
+                connection.stop()  # Release any rgpiod resources immediately.
                 raise ConnectionError('connection failed')
+            model = getRpiModel(connection)
+            if not model:
+                connection.stop()  # Release any rgpiod resources immediately.
+                raise ConnectionError('rpi model info not found')
+            LD.startStop('"%s" model = %s', self._dev.name, model)
+            gpioChip = GPIO_CHIP.get(model)
+            if gpioChip is None:
+                connection.stop()  # Release any rgpiod resources immediately.
+                raise ConnectionError('gpio chip number not found')
+            LD.startStop('"%s" gpioChip = %s', self._dev.name, gpioChip)
 
         useCount += 1  # Reserve the connection for this io device.
-        _resources[connectionId] = connection, useCount
+        _resources[connectionId] = connection, useCount, gpioChip
         LD.resource('"%s" using connection %s(%s)',
                     self._dev.name, connectionId, useCount)
-        return connection, connectionId
+        return connection, connectionId, gpioChip
+
+    def _getGpioHandle(self):
+        """
+
+        """
+        handleId = self._cId + '.gpio'
+
+        handle, useCount = _resources.get(handleId, (None, 0))
+        if handle is None:  # No existing i2c handle; open a new one.
+            LD.resource('"%s" opening new handle id %s',
+                        self._dev.name, handleId)
+            handle = self._c.gpiochip_open(self._gpioChip)
+
+        useCount += 1  # Reserve the handle for this io device.
+        _resources[handleId] = handle, useCount
+        LD.resource('"%s" using handle %s%s(%s)',
+                    self._dev.name, handleId, handle, useCount)
+        return handle, handleId
 
     def _getI2cHandle(self):
         """
@@ -628,7 +687,7 @@ class PiGPIODevice(ABC):
         if handle is None:  # No existing spi handle; open a new one.
             LD.resource('"%s" opening new handle id %s',
                         self._dev.name, handleId)
-            handle = self._c.spi_open(int(spiChannel), bitRate,
+            handle = self._c.spi_open(0, int(spiChannel), bitRate,
                                       self.SPIBUS << 8)
 
         useCount += 1  # Reserve the handle for this io device.
@@ -644,11 +703,11 @@ class PiGPIODevice(ABC):
         release the connection.  If the use count is zero, delete the
         connection and stop it to return all resources to the pigpio daemon.
         """
-        connection, useCount = _resources[connectionId]
+        connection, useCount, gpioChip = _resources[connectionId]
         useCount -= 1
         LD.resource('"%s" releasing connection %s(%s)',
                     self._dev.name, connectionId, useCount)
-        _resources[connectionId] = connection, useCount
+        _resources[connectionId] = connection, useCount, gpioChip
         if not useCount:
             LD.resource('"%s" stopping connection to %s',
                         self._dev.name, connectionId)
@@ -672,7 +731,9 @@ class PiGPIODevice(ABC):
         if not useCount:
             del _resources[handleId]
             LD.resource('"%s" closing handle %s', self._dev.name, hName)
-            if hSplit[1] == 'i2c':
+            if hSplit[1] == 'gpio':
+                self._c.gpiochip_close(handle)
+            elif hSplit[1] == 'i2c':
                 self._c.i2c_close(handle)
             else:
                 self._c.spi_close(handle)
@@ -1271,7 +1332,7 @@ class DockerPiRelay(PiGPIODevice):
             self._updateOnOffState(bit)
             if bit:
                 if self._dev.pluginProps['momentary']:
-                    sleep(float(self._dev.pluginProps['turnOffDelay']))
+                    time.sleep(float(self._dev.pluginProps['turnOffDelay']))
                     self._write(0)
         else:
             L.warning('"%s" invalid output value %s; write ignored',
@@ -1285,7 +1346,7 @@ class DockerPiRelay(PiGPIODevice):
 # Internal instance methods:                                                  #
 #                                                                             #
 # def __init__(self, dev)                                                     #
-# def _readSpiByte(self, register, data)                                      #
+# def _readSPIByte(self, register, data)                                      #
 # def _readRegister(self, register)                                           #
 # def _writeRegister(self, register, byte)                                    #
 # def _updateRegister(self, register, bit)                                    #
@@ -1372,10 +1433,8 @@ class IOExpander(PiGPIODevice):
         """
         PiGPIODevice.__init__(self, dev)  # Common initialization.
         self._i2c = 'S' not in dev.pluginProps['ioDevType']
-        if self._i2c:
-            self._h, self._hId = self._getI2cHandle()  # i2c interface.
-        else:
-            self._h, self._hId = self._getSpiHandle()  # spi interface.
+        self._h, self._hId = (self._getI2cHandle() if self._i2c else
+                              self._getSpiHandle())
 
         # Define unique internal instance attributes.
 
@@ -1473,7 +1532,7 @@ class IOExpander(PiGPIODevice):
             hardwareInterrupt = dev.pluginProps['hardwareInterrupt']
             self._updateRegister('GPINTEN', hardwareInterrupt)
 
-    def _readSpiByte(self, register, control):
+    def _readSPIByte(self, register, control):
         """
         Read and return a single byte of data over the spi bus as directed by
         the spi control tuple.
@@ -1499,10 +1558,10 @@ class IOExpander(PiGPIODevice):
         else:  # MCP23SXX - spi interface
             spiDevAddress = int(self._dev.pluginProps['spiDevAddress'], 16)
             control = (spiDevAddress << 1 | self.READ, registerAddress, 0)
-            byte = self._readSpiByte(register, control)
+            byte = self._readSPIByte(register, control)
 
             if self._dev.pluginProps['checkSPI']:  # Check spi integrity.
-                byte_ = self._readSpiByte(register, control)
+                byte_ = self._readSPIByte(register, control)
                 if byte != byte_:
                     L.warning('"%s" readRegister %s spi check: unequal '
                               'consecutive reads %02x %02x',
@@ -1573,7 +1632,7 @@ class IOExpander(PiGPIODevice):
             self._updateOnOffState(bit)
             if bit:  # Device was turned on.
                 if self._dev.pluginProps['momentary']:
-                    sleep(float(self._dev.pluginProps['turnOffDelay']))
+                    time.sleep(float(self._dev.pluginProps['turnOffDelay']))
                     self._write(0)  # Turn it off.
         else:
             L.warning('"%s" invalid output value %s; write ignored',
@@ -1660,9 +1719,9 @@ class PiGPIO(PiGPIODevice):
     """
     # Class constant:
 
-    PUD = {'off':  pigpio.PUD_OFF,  # GPIO pullup parameter definitions.
-           'up':   pigpio.PUD_UP,
-           'down': pigpio.PUD_DOWN}
+    PUD = {'off':  rgpio.SET_PULL_NONE,  # GPIO pullup parameter definitions.
+           'up':   rgpio.SET_PULL_UP,
+           'down': rgpio.SET_PULL_DOWN}
 
     # Internal instance methods:
 
@@ -1674,33 +1733,34 @@ class PiGPIO(PiGPIODevice):
         setup pwm processing if requested.
         """
         PiGPIODevice.__init__(self, dev)  # Common initialization.
+        self._h, self._hId = self._getGpioHandle()  # gpio interface.
 
         # Set internal instance attributes and configure the gpio device.
 
         self._gpioNumber = int(dev.pluginProps['gpioNumber'])
 
         if dev.deviceTypeId == 'digitalInput':
-            self._c.set_mode(self._gpioNumber, pigpio.INPUT)
             pullup = dev.pluginProps['pullup']
-            self._c.set_pull_up_down(self._gpioNumber, self.PUD[pullup])
-            if dev.pluginProps['callback']:
-                self._callbackId = self._c.callback(self._gpioNumber,
-                                        pigpio.EITHER_EDGE, self._callback)
-                self._priorTic = self._c.get_current_tick()
+            pud = self.PUD[pullup]
+            if dev.pluginProps['callback']:  # alert/callback device
+                self._c.gpio_claim_alert(self._h, self._gpioNumber,
+                                         rgpio.BOTH_EDGES, pud)
+                self._callbackId = self._c.callback(self._h, self._gpioNumber,
+                                         rgpio.BOTH_EDGES, self._callback)
                 if dev.pluginProps['glitchFilter']:
                     glitchTime = int(dev.pluginProps['glitchTime'])
-                    self._c.set_glitch_filter(self._gpioNumber, glitchTime)
+                    self._c.gpio_set_debounce_micros(self._h, self._gpioNumber,
+                                                     glitchTime)
+                self._priorTimestamp = 0
                 if self._dev.pluginProps['relayInterrupts']:
                     self._interruptDevices = []  # Interrupt devices list.
+            else:  # non-alert/callback input device
+                self._c.gpio_claim_input(self._h, self._gpioNumber, pud)
 
         elif dev.deviceTypeId == 'digitalOutput':
-            self._c.set_mode(self._gpioNumber, pigpio.OUTPUT)
-            if dev.pluginProps['pwm']:
-                self._c.set_PWM_range(self._gpioNumber, 100)
-                frequency = int(dev.pluginProps['frequency'])
-                self._c.set_PWM_frequency(self._gpioNumber, frequency)
+            self._c.gpio_claim_output(self._h, self._gpioNumber)
 
-    def _callback(self, gpioNumber, pinBit, tic):
+    def _callback(self, gpioChip, gpioNumber, pinBit, timestamp):
         """
         Respond to an input device callback.  Apply the contact bounce filter
         if requested for both rising and falling transitions.  Relay the
@@ -1713,29 +1773,24 @@ class PiGPIO(PiGPIODevice):
         devices in the interrupt devices list.
         """
         try:
-            dt = pigpio.tickDiff(self._priorTic, tic)
-            self._priorTic = tic
-            LD.digital('"%s" callback %s %s %s %s',
-                       self._dev.name, gpioNumber, pinBit, tic, dt)
+            dt = timestamp - self._priorTimestamp  # nanoseconds since last cb.
+            if dt < 0:
+                dt += 1 << 64
+            self._priorTimestamp = timestamp
+            dt /= 1000.0  # microseconds since last callback.
+            dt = min(dt, 200000)  # Ignore anything above 200 msec.
+            LD.digital('"%s" callback %i %i %i %i %i', self._dev.name,
+                       gpioChip, gpioNumber, pinBit, timestamp, dt)
             logAll = True  # Default logging option for state update.
             if pinBit in (0, 1):
                 bit = pinBit ^ self._dev.pluginProps['invert']
 
-                # Apply the contact bounce filter, if requested.
-
-                if self._dev.pluginProps['bounceFilter']:
-                    if dt < self._dev.pluginProps['bounceTime']:  # Bouncing.
-                        if self._dev.pluginProps['logBounce']:
-                            L.warning('"%s" %s µs bounce; update to %s '
-                                'ignored', self._dev.name, dt, ON_OFF[bit])
-                        return  # Ignore the bounced state change.
-
                 # Relay interrupt, if requested.
 
-                elif self._dev.pluginProps['relayInterrupts']:
+                if self._dev.pluginProps['relayInterrupts']:
                     if bit:  # Rising edge; interrupt occurred.
-                        # Set watchdog for 200 ms.
-                        self._c.set_watchdog(self._gpioNumber, 200)
+                        self._c.gpio_set_watchdog_micros(self._h,
+                            self._gpioNumber, 200000)  # Set watchdog to 200 ms
                         for intDevId in self._interruptDevices:
                             if _ioDevices[intDevId].interrupt():  # Interrupt.
                                 break  # Only one match per interrupt.
@@ -1745,7 +1800,8 @@ class PiGPIO(PiGPIODevice):
                     else:  # Falling edge; interrupt reset.
                         LD.digital('"%s" interrupt time is %s ms',
                                    self._dev.name, dt / 1000)
-                        self._c.set_watchdog(self._gpioNumber, 0)  # Nix wdog.
+                        self._c.gpio_set_watchdog_micros(self._h,
+                            self._gpioNumber, 0)  # Reset the watchdog timer.
                     logAll = None  # Set logAll to suppress logging.
 
                 # Update the GPIO device onOffState for both normal and
@@ -1753,15 +1809,16 @@ class PiGPIO(PiGPIODevice):
 
                 self._updateOnOffState(bit, logAll=logAll)
 
-            elif pinBit == pigpio.TIMEOUT:  # Timeout; try to force a reset.
+            elif pinBit == rgpio.TIMEOUT:  # Timeout; try to force a reset.
                 L.warning('"%s" interrupt reset timeout', self._dev.name)
                 for intDevId in self._interruptDevices:
                     _ioDevices[intDevId].resetInterrupt()  # Force int reset.
-                self._c.set_watchdog(self._gpioNumber, 0)  # Nix watchdog.
+                self._c.gpio_set_watchdog_micros(self._h,
+                    self._gpioNumber, 0)  # Reset the watchdog timer.
 
                 # Check to see if it worked.
 
-                pinBit = self._c.read(self._gpioNumber)
+                pinBit = self._c.gpio_read(self._h, self._gpioNumber)
                 bit = pinBit ^ self._dev.pluginProps['invert']
                 if bit:  # Interrupt is still active.
                     L.warning('"%s" forced reset failed', self._dev.name)
@@ -1777,7 +1834,7 @@ class PiGPIO(PiGPIODevice):
         and log the Indigo device onOffState.
         """
         invert = self._dev.pluginProps.get('invert', False)
-        bit = self._c.read(self._gpioNumber) ^ invert
+        bit = self._c.gpio_read(self._h, self._gpioNumber) ^ invert
         LD.digital('"%s" read %s', self._dev.name, ON_OFF[bit])
         self._updateOnOffState(bit, logAll=logAll)
 
@@ -1795,15 +1852,17 @@ class PiGPIO(PiGPIODevice):
         except ValueError:
             pass
         if bit in (0, 1):
-            self._c.write(self._gpioNumber, bit)
+            self._c.gpio_write(self._h, self._gpioNumber, bit)
             LD.digital('"%s" write %s', self._dev.name, ON_OFF[bit])
             self._updateOnOffState(bit)
             if bit:
                 if self._dev.pluginProps['pwm']:
+                    frequency = int(self._dev.pluginProps['frequency'])
                     dutyCycle = int(self._dev.pluginProps['dutyCycle'])
-                    self._c.set_PWM_dutycycle(self._gpioNumber, dutyCycle)
+                    self._c.tx_pwm(self._h, self._gpioNumber, frequency,
+                                   dutyCycle)
                 if self._dev.pluginProps['momentary']:
-                    sleep(float(self._dev.pluginProps['turnOffDelay']))
+                    time.sleep(float(self._dev.pluginProps['turnOffDelay']))
                     self._write(0)
         else:
             L.warning('"%s" invalid output value %s; write ignored',

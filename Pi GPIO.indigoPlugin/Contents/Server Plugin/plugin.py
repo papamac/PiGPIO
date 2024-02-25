@@ -16,8 +16,8 @@ FUNCTION:  plugin.py defines the Plugin class, with standard methods that
    USAGE:  plugin.py is included in the Pi GPIO.indigoPlugin bundle and its
            methods are called by the Indigo server.
   AUTHOR:  papamac
- VERSION:  0.9.3
-    DATE:  December 7, 2023
+ VERSION:  0.10.0
+    DATE:  January 13, 2024
 
 UNLICENSE:
 
@@ -156,6 +156,8 @@ v0.8.1   5/13/2023  (1) Update validation of spi bitRate for MCP320X devices.
                     release.
 v0.9.3   12/7/2023  Fix pluginPrefs key error when starting the plugin for the
                     first time.
+v0.10.0  1/13/2024  Replace pigpio with rgpio to accommodate changes in
+                    Raspberry Pi 5.
 """
 ###############################################################################
 #                                                                             #
@@ -164,16 +166,18 @@ v0.9.3   12/7/2023  Fix pluginPrefs key error when starting the plugin for the
 ###############################################################################
 
 __author__ = 'papamac'
-__version__ = '0.9.3'
-__date__ = '12/7/2023'
+__version__ = '0.10.0'
+__date__ = '1/13/2024'
 
 import indigo
 
 from logging import NOTSET, getLogger
 
 from conditionalLogging import LD, LI
-import pigpio
-from pigpioDevices import getIoDev, logStartupSummary, logShutdownSummary
+import rgpio
+from pigpioDevices import GPIO_CHIP
+from pigpioDevices import getIoDev, getRpiModel
+from pigpioDevices import logStartupSummary, logShutdownSummary
 
 L = getLogger('Plugin')  # Standard Plugin logger.
 ON, OFF = (1, 0)         # on/off states.
@@ -378,14 +382,27 @@ class Plugin(indigo.PluginBase):
         except ValueError:
             errors['portNumber'] = 'Port number must be an integer.'
         else:
-            if 1024 <= portNumber <= 65535:
-                connection = pigpio.pi(hostAddress, portNumber)
+            if not 1024 <= portNumber <= 65535:
+                errors['portNumber'] = 'Port number must be in range.'
+            else:  # Good port number; check connection.
+                connection = rgpio.sbc(hostAddress, portNumber)
                 if not connection.connected:
                     error = 'Connection failed.'
                     errors['hostAddress'] = errors['portNumber'] = error
-                connection.stop()
-            else:
-                errors['portNumber'] = 'Port number must be in range.'
+                    connection.stop()
+                else:  # Good connection; check rpi model.
+                    model = getRpiModel(connection)
+                    if not model:
+                        error = 'rpi model info not found.'
+                        errors['hostAddress'] = errors['portNumber'] = error
+                        connection.stop()
+                    else:  # Good model; look up the gpio chip number.
+                        gpioChip = GPIO_CHIP.get(model)
+                        if gpioChip is None:
+                            error = 'gpio chip number not found.'
+                            errors['hostAddress'] = error
+                            errors['portNumber'] = error
+                            connection.stop()
 
         try:  # Check pollingInterval.
             pollingInterval = float(valuesDict['pollingInterval'])

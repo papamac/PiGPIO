@@ -19,8 +19,8 @@ FUNCTION:  Devices.xml defines Pi GPIO device objects, specifies ConfigUis, and
            (IOM).  The device object includes a pluginProps dictionary that
            contains the device properties from the xml fields.
   AUTHOR:  papamac
- VERSION:  0.9.1
-    DATE:  June 17, 2023
+ VERSION:  0.10.0
+    DATE:  January 13, 2024
 
 DESCRIPTION:
 
@@ -74,9 +74,13 @@ v0.8.0   3/20/2023  (1) Change the device types for analog input and analog
 v0.8.1   5/13/2023  (1) Add spi bitRate field for MCP3202 device.
                     (2) Change spi bitRate units from kb/s to Mb/s.
 v0.9.0    6/8/2023  Add checkSPI, status monitoring, and statusInterval fields
-                    to each device ConfigIU.
+                    to each device ConfigUI.
 v0.9.1   6/17/2023  Delete the limitFaultMessage field from the analogInput
                     and analogOutput devices.
+v0.10.0  1/13/2024  Replace pigpio with rgpio to accommodate changes in
+                    Raspberry Pi 5.  Change the default port number from 8888
+                    to 8889 on all devices.  Remove the bounce filter fields
+                    in the digital input ConfigUI.
 -->
 
 <Devices>
@@ -109,7 +113,7 @@ v0.9.1   6/17/2023  Delete the limitFaultMessage field from the analogInput
 
             <!-- analogInput ConfigUI portNumber -->
 
-            <Field id="portNumber" type="textfield" defaultValue="8888">
+            <Field id="portNumber" type="textfield" defaultValue="8889">
                 <Label>Port Number (1024-65535):</Label>
             </Field>
 
@@ -527,7 +531,7 @@ v0.9.1   6/17/2023  Delete the limitFaultMessage field from the analogInput
 
             <!-- analogOutput ConfigUI portNumber -->
 
-            <Field id="portNumber" type="textfield" defaultValue="8888">
+            <Field id="portNumber" type="textfield" defaultValue="8889">
                 <Label>Port Number (1024-65535):</Label>
             </Field>
 
@@ -859,7 +863,7 @@ v0.9.1   6/17/2023  Delete the limitFaultMessage field from the analogInput
 
             <!-- digitalInput ConfigUI portNumber -->
 
-            <Field id="portNumber" type="textfield" defaultValue="8888">
+            <Field id="portNumber" type="textfield" defaultValue="8889">
                 <Label>Port Number (1024-65535):</Label>
             </Field>
 
@@ -1140,31 +1144,6 @@ v0.9.1   6/17/2023  Delete the limitFaultMessage field from the analogInput
                 <Label>The glitch time should be as short as possible, but long enough to eliminate short, spurious glitches.</Label>
             </Field>
 
-            <!-- digitalInput ConfigUI bounceFilter -->
-
-            <Field id="bounceFilter" type="checkbox" defaultValue="false"
-                   visibleBindingId="callback" visibleBindingValue="true">
-                <Label>Enable Contact Bounce Filter:</Label>
-            </Field>
-            <Field id="zzBounceFilterLabel" type="label" fontSize="small"
-                   fontColor="darkgray" alignText="center"
-                   visibleBindingId="callback" visibleBindingValue="true">
-                <Label>The bounce filter rejects callback state changes that are separated by less than the bounce time.  It is used to eliminate multiple responses from bouncing mechanical switches/relays.</Label>
-            </Field>
-            <Field id="bounceTime" type="textfield" defaultValue="100"
-                   visibleBindingId="bounceFilter" visibleBindingValue="true">
-                <Label>Bounce Time (µsec):</Label>
-            </Field>
-            <Field id="zzBounceTimeLabel" type="label" fontSize="small"
-                   fontColor="darkgray" alignText="center"
-                   visibleBindingId="bounceFilter" visibleBindingValue="true">
-                <Label>The bounce time must be tuned to each switch/application.  If too low, bouncing states will be processed normally.  If too high, valid state changes could be rejected.</Label>
-            </Field>
-            <Field id="logBounce" type="checkbox" defaultValue="false"
-                   visibleBindingId="bounceFilter" visibleBindingValue="true">
-                <Label>Log Bounce Filter Warnings:</Label>
-            </Field>
-
             <!-- digitalInput ConfigUI relayInterrupts -->
 
             <Field id="relayInterrupts" type="checkbox" defaultValue="false"
@@ -1288,7 +1267,7 @@ v0.9.1   6/17/2023  Delete the limitFaultMessage field from the analogInput
 
             <!-- digitalOutput ConfigUI portNumber -->
 
-            <Field id="portNumber" type="textfield" defaultValue="8888">
+            <Field id="portNumber" type="textfield" defaultValue="8889">
                 <Label>Port Number (1024-65535):</Label>
             </Field>
 
