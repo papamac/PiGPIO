@@ -14,7 +14,7 @@
 FUNCTION:  rgpio.py is a library of Python classes and methods that interfaces
            with the Raspberry Pi's rgpio daemon to control the Pi's GPIO
            hardware.
-   USAGE:  rgpio.py is included by the pigpioDevices.py module.  Its methods
+   USAGE:  rgpio.py is included by the ioDevices.py module.  Its methods
            are called to perform low level GPIO operations to implement higher
            level Pi GPIO device functionality.
   AUTHOR:  joan2937
@@ -51,7 +51,7 @@ For more information, please refer to <http://unlicense.org/>
 
 DESCRIPTION:
 
-[http://abyz.me.uk/lg/py_rgpio.html]
+<http://abyz.me.uk/lg/py_rgpio.html>
 
 rgpio is a Python module which allows remote control of the GPIO
 and other functions of Linux SBCs running the rgpiod daemon.

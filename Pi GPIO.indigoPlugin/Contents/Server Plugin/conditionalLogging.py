@@ -15,7 +15,7 @@ FUNCTION:  conditionalLogging.py provides optional logging of four message
            types (analog, digital, resource, and startStop) based on user
            selections in the plugin.py pluginPrefs.
    USAGE:  conditionalLogging.py is included by the two primary plugin modules,
-           plugin.py and pigpioDevices.py  Its methods are called as needed by
+           plugin.py and ioDevices.py  Its methods are called as needed by
            module functions and methods.
   AUTHOR:  papamac
  VERSION:  0.9.2
@@ -50,20 +50,20 @@ For more information, please refer to <http://unlicense.org/>
 
 Pi GPIO PLUGIN BUNDLE DESCRIPTION:
 
-The Pi GPIO plugin bundle has two primary Python modules/classes: plugin.py
-encapsulates the Indigo device behavior in the Plugin class and
-pigpioDevices.py encapsulates detailed Raspberry Pi GPIO device behavior in the
-PiGPIODevice class and its six subclasses.  A PiGPIODevice subclass instance is
-created for each Indigo device defined by plugin.py.  The plugin bundle
-contains two supporting Python modules: pigpio.pi with classes/methods to
-access the pigpio server daemon and conditionalLogging.py to provide flexible
-Indigo logging by message type and logging level.  It also includes several xml
-files that define Indigo GUIs, actions, and events.
+The Pi GPIO plugin bundle has two primary Python modules: plugin.py
+encapsulates the plugin device behavior in the Plugin class, and this module,
+ioDevices.py, encapsulates detailed io device behavior in the IoDevice
+class and its six subclasses.  An IoDevice subclass instance is created for
+each plugin device started by plugin.py.  The plugin bundle contains two
+supporting Python modules: rgpio.pi with classes/methods to access the rgpio
+daemon and conditionalLogging.py to provide flexible Indigo logging by message
+type and logging level.  It also includes several xml files that define plugin
+devices, actions, and events.
 
 MODULE conditionalLogging.py DESCRIPTION:
 
 The PluginConfig.xml defines four types of messages that are conditionally
-logged by the pigpioDevices.py module: analog, digital, resource, and
+logged by the ioDevices.py module: analog, digital, resource, and
 startStop.  The pluginPrefs ConfigUi allows the user to select one or more of
 these message types for optional logging.  Messages are logged only if they are
 selected.  Some are logged at the DEBUG logging level and some are logged at
@@ -76,7 +76,7 @@ this flexible logging feature.  The LD class has methods LD.analog, LD.digital,
 LD.resource, and LD.startStop to log each of the message types at the DEBUG
 logging level.  Similarly, the LI class has methods to log each of the message
 types at the INFO level.  These classes and methods are called by functions and
-methods in the pigpioDevices.py module as appropriate.
+methods in the ioDevices.py module as appropriate.
 
 The LD and LI classes each have an init method to allow their other methods to
 access the plugin.py module's pluginPrefs.  The Plugin class __init__ method

@@ -16,8 +16,8 @@ FUNCTION:  plugin.py defines the Plugin class, with standard methods that
    USAGE:  plugin.py is included in the Pi GPIO.indigoPlugin bundle and its
            methods are called by the Indigo server.
   AUTHOR:  papamac
- VERSION:  0.10.0
-    DATE:  January 13, 2024
+ VERSION:  0.10.1
+    DATE:  March 25, 2024
 
 UNLICENSE:
 
@@ -54,30 +54,30 @@ access these capabilities using standard Indigo devices.  Physical analog and
 digital input/output devices, hosted on the Pi, are linked to Indigo device
 objects, giving Indigo the ability to sense the real world and manage it in
 near real time.  One or more Pi's connect to the Indigo host via ethernet.
-Each Pi runs a pigpio server daemon (written by joan2937) that manages the
+Each Pi runs a rgpio server daemon (written by joan2937) that manages the
 interface between its GPIO hardware and the Pi GPIO plugin.
 
 See the README.md file in the top level PiGPIO folder for more functional
 details and operating instructions.  For details on the Raspberry Pi, its GPIO
-system, and joan2937's amazing pigpio library, please refer to:
+system, and joan2937's amazing lg library, please refer to:
 
 RPi computers:      <https://www.raspberrypi.com/products/
 RPi OS:             <https://www.raspberrypi.com/software/>
 RPi official doc's: <https://www.raspberrypi.com/documentation/computers/>
 RPi GPIO system :   <https://www.raspberrypi.com/documentation/computers
                      /os.html#gpio-and-the-40-pin-header>
-pigpio library:     <https://abyz.me.uk/rpi/pigpio/>
-pigpio code:        <https://github.com/joan2937/pigpio/>
+lg archive (rgpio): <https://abyz.me.uk/lg/index.html>
+rgpio code:         <https://github.com/joan2937/lg>
 
-The Pi GPIO plugin bundle has two primary Python modules/classes: this module,
-plugin.py, encapsulates the Indigo device behavior in the Plugin class, and
-pigpioDevices.py encapsulates detailed Raspberry Pi GPIO device behavior in the
-PiGPIODevice class and its six subclasses.  A PiGPIODevice subclass instance is
-created for each Indigo device defined by plugin.py.  The plugin bundle
-contains two supporting Python modules: pigpio.pi with classes/methods to
-access the pigpio server daemon and conditionalLogging.py to provide flexible
-Indigo logging by message type and logging level.  It also includes several xml
-files that define Indigo GUIs, actions, and events.
+The Pi GPIO plugin bundle has two primary Python modules: plugin.py
+encapsulates the plugin device behavior in the Plugin class, and this module,
+ioDevices.py, encapsulates detailed io device behavior in the IoDevice
+class and its six subclasses.  An IoDevice subclass instance is created for
+each plugin device started by plugin.py.  The plugin bundle contains two
+supporting Python modules: rgpio.pi with classes/methods to access the rgpio
+daemon and conditionalLogging.py to provide flexible Indigo logging by message
+type and logging level.  It also includes several xml files that define plugin
+devices, actions, and events.
 
 MODULE plugin.py DESCRIPTION:
 
@@ -85,8 +85,8 @@ The plugin.py module defines the Plugin class whose methods provide entry
 points into the plugin from the Indigo Plugin Host.  These methods, with access
 to the Indigo server's object database, manage the definition, validation,
 instantiation, and concurrent execution of Pi GPIO device objects.  Plugin
-methods instantiate a PiGPIODevice subclass object for each Indigo device and
-invoke PiGPIODevice object methods to perform detailed device functions.
+methods instantiate an IoDevice subclass object for each plugin device and
+invoke IoDevice subclass methods to perform detailed device functions.
 
 DEPENDENCIES/LIMITATIONS:
 
@@ -104,6 +104,13 @@ CHANGE LOG:
 Major changes to the Pi GPIO plugin are described in the CHANGES.md file in the
 top level PiGPIO folder.  Changes of lesser importance may be described in
 individual module docstrings if appropriate.
+
+Note 2/25/2024: Some of the following descriptions may seem confusing because
+the original module used joan2937's pigpio.py library and the pigpio daemon.
+These were not upgraded to support the Raspberry Pi 5 and were replaced by
+by papamac in v0.10.0 with their lg archive equivalents, rgpio.py and the rgpio
+daemon.  The historical record both here and in CHANGES.md retain references to
+the original pigpio software.
 
 v0.5.0  11/28/2021  Fully functional beta version with minimal documentation.
 v0.5.1  11/29/2021  Force device stop/restart on a name change.
@@ -156,8 +163,12 @@ v0.8.1   5/13/2023  (1) Update validation of spi bitRate for MCP320X devices.
                     release.
 v0.9.3   12/7/2023  Fix pluginPrefs key error when starting the plugin for the
                     first time.
-v0.10.0  1/13/2024  Replace pigpio with rgpio to accommodate changes in
-                    Raspberry Pi 5.
+v0.10.0  2/25/2024  (1) Replace pigpio.py with rgpio.py to accommodate changes
+                    in Raspberry Pi 5.
+                    (2) Update files and wiki.
+v0.10.1  3/25/2024  Refactor a key filename to be consistent with the change
+                    from pigpio to rgpio: pigpioDevices.py becomes
+                    ioDevices.py.
 """
 ###############################################################################
 #                                                                             #
@@ -166,8 +177,8 @@ v0.10.0  1/13/2024  Replace pigpio with rgpio to accommodate changes in
 ###############################################################################
 
 __author__ = 'papamac'
-__version__ = '0.10.0'
-__date__ = '1/13/2024'
+__version__ = '0.10.1'
+__date__ = '3/25/2024'
 
 import indigo
 
@@ -175,9 +186,8 @@ from logging import NOTSET, getLogger
 
 from conditionalLogging import LD, LI
 import rgpio
-from pigpioDevices import GPIO_CHIP
-from pigpioDevices import getIoDev, getRpiModel
-from pigpioDevices import logStartupSummary, logShutdownSummary
+from ioDevices import getIoDev, getRpiModel, GPIO_CHIP
+from ioDevices import logStartupSummary, logShutdownSummary
 
 L = getLogger('Plugin')  # Standard Plugin logger.
 ON, OFF = (1, 0)         # on/off states.
@@ -195,7 +205,7 @@ class Plugin(indigo.PluginBase):
     needed to manage and run multiple Pi GPIO devices.  It is segmented into
     four parts for readability:
 
-    I   STANDARD INDIGO INITIALIZATION, STARTUP, AND RUN/STOP METHODS,
+    I   INITIALIZATION, DEVICE START/STOP, AND RUN/SHUTDOWN METHODS,
     II  CONFIG UI VALIDATION METHODS,
     III CONFIG UI CALLBACK METHODS, and
     IV  ACTION CALLBACK METHODS
@@ -203,17 +213,10 @@ class Plugin(indigo.PluginBase):
 
     ###########################################################################
     #                                                                         #
-    #                               CLASS Plugin                              #
-    #                                   PART                                  #
+    #                              CLASS Plugin                               #
+    #                                 PART I                                  #
     #                                                                         #
-    #                                   III                                   #
-    #                                    I                                    #
-    #                                    I                                    #
-    #                                    I                                    #
-    #                                    I                                    #
-    #                                   III                                   #
-    #                                                                         #
-    #           INITIALIZATION, DEVICE START/STOP, AND RUN METHODS            #
+    #      INITIALIZATION, DEVICE START/STOP, AND RUN/SHUTDOWN METHODS        #
     #                                                                         #
     # def __init__(self, pluginId, pluginDisplayName, pluginVersion,          #
     #              pluginPrefs):                                              #
@@ -289,7 +292,7 @@ class Plugin(indigo.PluginBase):
         logStartupSummary()
         while True:
             for dev in indigo.devices.iter('self'):
-                if dev.enabled:
+                if dev.configured and dev.enabled:
                     ioDev = getIoDev(dev)
                     if ioDev:
                         ioDev.poll()
@@ -306,15 +309,8 @@ class Plugin(indigo.PluginBase):
 
     ###########################################################################
     #                                                                         #
-    #                               CLASS Plugin                              #
-    #                                   PART                                  #
-    #                                                                         #
-    #                                III   III                                #
-    #                                 I     I                                 #
-    #                                 I     I                                 #
-    #                                 I     I                                 #
-    #                                 I     I                                 #
-    #                                III   III                                #
+    #                              CLASS Plugin                               #
+    #                                 PART II                                 #
     #                                                                         #
     #                      CONFIG UI VALIDATION METHODS                       #
     #                                                                         #
@@ -668,15 +664,8 @@ class Plugin(indigo.PluginBase):
 
     ###########################################################################
     #                                                                         #
-    #                               CLASS Plugin                              #
-    #                                   PART                                  #
-    #                                                                         #
-    #                             III   III   III                             #
-    #                              I     I     I                              #
-    #                              I     I     I                              #
-    #                              I     I     I                              #
-    #                              I     I     I                              #
-    #                             III   III   III                             #
+    #                              CLASS Plugin                               #
+    #                                PART III                                 #
     #                                                                         #
     #                       CONFIG UI CALLBACK METHOD                         #
     #                                                                         #
@@ -700,15 +689,8 @@ class Plugin(indigo.PluginBase):
 
     ###########################################################################
     #                                                                         #
-    #                               CLASS Plugin                              #
-    #                                   PART                                  #
-    #                                                                         #
-    #                             III   III      III                          #
-    #                              I     I       I                            #
-    #                              I      I     I                             #
-    #                              I       I   I                              #
-    #                              I        I I                               #
-    #                             III       III                               #
+    #                              CLASS Plugin                               #
+    #                                 PART IV                                 #
     #                                                                         #
     #                         ACTION CALLBACK METHODS                         #
     #                                                                         #
@@ -735,8 +717,6 @@ class Plugin(indigo.PluginBase):
     # def actionControlUniversal(self, action, dev)                           #
     #                                                                         #
     ###########################################################################
-
-    # Internal support methods (functions of an Indigo device object):
 
     @staticmethod
     def _read(dev):
@@ -801,8 +781,6 @@ class Plugin(indigo.PluginBase):
         """ Turn on or turn off the device depending on the current state. """
         self._turnOff(dev) if dev.states['onOffState'] else self._turnOn(dev)
 
-    # Plugin action callback methods (functions of a pluginAction object)
-
     def read(self, pluginAction):
         """ Read the device as a result of a Pi GPIO read action request. """
         dev = indigo.devices[pluginAction.deviceId]
@@ -845,9 +823,6 @@ class Plugin(indigo.PluginBase):
         dev = indigo.devices[pluginAction.deviceId]
         L.threaddebug('toggle called "%s"', dev.name)
         self._turnOff(dev) if dev.states['onOffState'] else self.turnOn(dev)
-
-    # Built-in action callback methods (functions of an action enumeration
-    #                                   object and the device object)
 
     def actionControlDevice(self, action, dev):
         """
