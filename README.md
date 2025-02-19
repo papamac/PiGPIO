@@ -39,7 +39,7 @@ The following table lists the top level requirements for the Pi GPIO plugin:
 | Python Library (API)                        | Official (3.X)                                                                                                                                 |
 | Macintosh computer<br/>for pi configuration | Large display preferred<br/>SD card reader                                                                                                     |
 | Raspberry Pi                                | Model 4 or 5 with 1 GB RAM or more<br/>microSD card with 16 GB or more, U3 / A2 rated<br/>5V USB-C power adapter for the rpi model chosen      |
-| Local Network                               | Wired network preferred (1000 Mb/sec)<br/>Wireless OK if faster than 50 Mb/sec                                                                 |
+| Local Network                               | Wired network preferred (1000 Mb/sec)<br/>Wireless OK if 100 Mb/sec or greater                                                                 |
 | Internet                                    | At least 25 Mb/sec for software downloads                                                                                                      |
 | Hardware Interfaces                         | Raspberry Pi GPIO pins<br/>Pi I/O devices and HATs from the [supported devices](https://github.com/papamac/PiGPIO/wiki/Supported-Devices) list |
 

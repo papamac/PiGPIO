@@ -16,8 +16,8 @@ FUNCTION:  plugin.py defines the Plugin class, with standard methods that
    USAGE:  plugin.py is included in the Pi GPIO.indigoPlugin bundle and its
            methods are called by the Indigo server.
   AUTHOR:  papamac
- VERSION:  0.10.1
-    DATE:  March 25, 2024
+ VERSION:  0.10.2
+    DATE:  February 19, 2025
 
 UNLICENSE:
 
@@ -169,6 +169,9 @@ v0.10.0  2/25/2024  (1) Replace pigpio.py with rgpio.py to accommodate changes
 v0.10.1  3/25/2024  Refactor a key filename to be consistent with the change
                     from pigpio to rgpio: pigpioDevices.py becomes
                     ioDevices.py.
+v0.10.2  2/19/2025  Remove bounceFilter and bounceTime checks from method
+                    validateDeviceConfigUi.  The bounce filter was replaced by
+                    the glitchFilter in v0.5.9.
 """
 ###############################################################################
 #                                                                             #
@@ -177,8 +180,8 @@ v0.10.1  3/25/2024  Refactor a key filename to be consistent with the change
 ###############################################################################
 
 __author__ = 'papamac'
-__version__ = '0.10.1'
-__date__ = '3/25/2024'
+__version__ = '0.10.2'
+__date__ = '2/19/2025'
 
 import indigo
 
@@ -214,7 +217,14 @@ class Plugin(indigo.PluginBase):
     ###########################################################################
     #                                                                         #
     #                              CLASS Plugin                               #
-    #                                 PART I                                  #
+    #                                   PART                                  #
+    #                                                                         #
+    #                                   III                                   #
+    #                                    I                                    #
+    #                                    I                                    #
+    #                                    I                                    #
+    #                                    I                                    #
+    #                                   III                                   #
     #                                                                         #
     #      INITIALIZATION, DEVICE START/STOP, AND RUN/SHUTDOWN METHODS        #
     #                                                                         #
@@ -262,7 +272,7 @@ class Plugin(indigo.PluginBase):
         """
         Get the io device object for the current Indigo device.  Create a new
         IO device instance if none exists.  If successful read the io device to
-        set it's initial states.
+        set its initial states.
         """
         L.threaddebug('deviceStartComm called "%s"', dev.name)
         ioDev = getIoDev(dev, new=True)
@@ -310,7 +320,14 @@ class Plugin(indigo.PluginBase):
     ###########################################################################
     #                                                                         #
     #                              CLASS Plugin                               #
-    #                                 PART II                                 #
+    #                                   PART                                  #
+    #                                                                         #
+    #                                III   III                                #
+    #                                 I     I                                 #
+    #                                 I     I                                 #
+    #                                 I     I                                 #
+    #                                 I     I                                 #
+    #                                III   III                                #
     #                                                                         #
     #                      CONFIG UI VALIDATION METHODS                       #
     #                                                                         #
@@ -352,7 +369,7 @@ class Plugin(indigo.PluginBase):
     def validateDeviceConfigUi(valuesDict, typeId, devId):
         """
         Validate the ConfigUi settings for Pi GPIO devices.  Derive new values
-        dictionary entries for the for the device id (devId) and device address
+        dictionary entries for the device id (devId) and device address
         (address).
         """
         dev = indigo.devices[devId]
@@ -510,20 +527,6 @@ class Plugin(indigo.PluginBase):
             pullup2 = valuesDict['pullup2']
             valuesDict['pullup'] = pullup1 if pullup1 != 'off' else pullup2
 
-            if valuesDict['bounceFilter'] and valuesDict['relayInterrupts']:
-                error = 'Bounce Filter must be disabled to relay interrupts.'
-                errors['bounceFilter'] = error
-                errors['relayInterrupts'] = error
-
-            try:  # Check bounceTime.
-                bounceTime = float(valuesDict['bounceTime'])
-            except ValueError:
-                errors['bounceTime'] = 'Bounce Time must be a number.'
-            else:
-                if bounceTime < 0.0:
-                    error = 'Bounce Time must be non-negative.'
-                    errors['changeThreshold'] = error
-
         elif typeId == 'digitalOutput':
 
             try:  # Check turnOffDelay.
@@ -665,7 +668,14 @@ class Plugin(indigo.PluginBase):
     ###########################################################################
     #                                                                         #
     #                              CLASS Plugin                               #
-    #                                PART III                                 #
+    #                                   PART                                  #
+    #                                                                         #
+    #                             III   III   III                             #
+    #                              I     I     I                              #
+    #                              I     I     I                              #
+    #                              I     I     I                              #
+    #                              I     I     I                              #
+    #                             III   III   III                             #
     #                                                                         #
     #                       CONFIG UI CALLBACK METHOD                         #
     #                                                                         #
@@ -690,7 +700,14 @@ class Plugin(indigo.PluginBase):
     ###########################################################################
     #                                                                         #
     #                              CLASS Plugin                               #
-    #                                 PART IV                                 #
+    #                                   PART                                  #
+    #                                                                         #
+    #                             III   III     III                           #
+    #                              I     I       I                            #
+    #                              I      I     I                             #
+    #                              I       I   I                              #
+    #                              I        I I                               #
+    #                             III       III                               #
     #                                                                         #
     #                         ACTION CALLBACK METHODS                         #
     #                                                                         #

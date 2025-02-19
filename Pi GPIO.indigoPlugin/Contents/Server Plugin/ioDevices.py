@@ -71,7 +71,7 @@ DEPENDENCIES/LIMITATIONS:
 
 The classes and methods in the pigpioDevices module depend on the rgpio Python
 library and the corresponding rgpio daemon running on the Raspberry Pi.  Both
-of these were written by joan2937, et al and are available in joan's lg
+of these were written by joan2937, et al. and are available in joan's lg
 repository on GitHub (gitHub.com/joan2937/lg).  The current version is v0.2.2
 released on May 3,2023.  The rgpio Python library is included in the plugin
 bundle as the module rgpio.py.  The rgpio daemon is available for installation
@@ -86,7 +86,7 @@ individual module docstrings if appropriate.
 Note 2/25/2024: Some of the following descriptions may seem confusing because
 the original module used joan2937's pigpio.py library and the pigpio daemon.
 These were not upgraded to support the Raspberry Pi 5 and were replaced by
-by papamac in v0.10.0 with their lg archive equivalents, rgpio.py and the rgpio
+papamac in v0.10.0 with their lg archive equivalents, rgpio.py and the rgpio
 daemon.  The historical record both here and in CHANGES.md retain references to
 the original pigpio software.
 
@@ -103,7 +103,7 @@ v0.5.5   4/12/2022  Set option to limit triggers to be the default for all
 v0.5.6   5/ 2/2022  Fix a bug that erroneously disables the gpio bounce filter
                     when bounce filter warning messages are not selected.
 v0.5.7   7/20/2022  Update for Python 3.
-v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dacs.
+v0.5.8   9/11/2022  Add support for Docker Pi Relay devices and 8/10-bit dac's.
 v0.5.9  10/12/2022  Add glitch filter option for built-in GPIO inputs.
 v0.6.0  11/20/2022  Use properties in pluginProps and pluginPrefs directly
                     without duplicating them as ioDev instance objects.  Update
@@ -162,10 +162,10 @@ v0.9.2   9/12/2023  (1) Refactor resource management methods (again!) to
 v0.10.0  2/25/2024  (1) Replace pigpio.py with rgpio.py to accommodate changes
                     in Raspberry Pi 5.
                     (2) Update the files and wiki.
-v0.10.1  3/25/2024  (1) Refactor a key filename and and class name to be
-                    consistent with the change from pigpio to rgpio:
-                    pigpioDevices.py becomes ioDevices.py and class
-                    PiGPIODevice becomes class IoDevice.
+v0.10.1  3/25/2024  (1) Refactor a key filename and class name to be consistent
+                    with the change from pigpio to rgpio: pigpioDevices.py
+                    becomes ioDevices.py and class PiGPIODevice becomes class
+                    IoDevice.
                     (2) Update the files and wiki.
                     (3) Divide class IoDevice into parts separated by banner
                     comments for readability.
@@ -239,10 +239,11 @@ _limitTriggers = {}
 
 _ioDevices = {}
 
-# Shared rgpiod resources that are used by by multiple io devices keyed by
-# the resource id:
+# Shared rgpiod resources that are used by multiple io devices keyed by the
+# resource id:
 
 _resources = {}
+
 
 ###############################################################################
 #                                                                             #
@@ -257,7 +258,7 @@ def _executeEventTriggers(dev, eventType, eventName, description='',
                           limitTriggers=False):
     """
     Conditionally execute all Indigo triggers for an eventType/eventName.  If
-    a named event occurs at a frequency greater then 1 per second, limit the
+    a named event occurs at a frequency greater than 1 per second, limit the
     trigger execution to approximately 1 in 10 seconds.  Save data needed to
     respond to the event in the trigger object's pluginProps.  Do not limit
     trigger execution if the argument limitTriggers is False.
@@ -313,7 +314,7 @@ def _pigpioError(dev, errorType, errorMessage):
     dev.setErrorStateOnServer('%s err' % errorType)
     _executeEventTriggers(dev, 'pigpioError', errorName.upper(),
                           limitTriggers=True)
-    getIoDev(dev).stop()
+    _ioDevices[dev.id].stop()
 
 
 ###############################################################################
@@ -330,12 +331,10 @@ def _pigpioError(dev, errorType, errorMessage):
 def getIoDev(dev, new=False):
     """
     Find or create a unique io device object (an instance of a IoDevice
-    subclass) for a Pi GPIO plugin device.  Create a new object only if there
-    is no existing one.  Return the object to the caller or return None if
-    there is no device available.
+    subclass) for a Pi GPIO plugin device.  Return the object to the caller or
+    return None if there is no device available.
 
-    If an io device exists in the internal _ioDevices dictionary, always return
-    it.
+    If an io device exists in the internal _ioDevices dictionary, return it.
 
     If there is no existing object and new=False, assume that the object should
     be available but is missing.  Return None and do not create a new instance.
@@ -344,18 +343,16 @@ def getIoDev(dev, new=False):
 
     If there is no existing object and new=True, instantiate a new io device
     object using the PiGPIO device properties.  If there are any startup
-    exceptions, call _pigpioError and return None.  If startup succeeds, return
-    the newly instantiated io device object.  new=True calls are used when a
-    PiGPIO device may not have been started (e.g., in the deviceStartComm
-    method, or __init__ methods for other io devices).
+    exceptions, call _pigpioError and return None.  If startup succeeds, save
+    the newly instantiated io device object in the io devices dictionary and
+    return it to the caller.  new=True calls are used when the caller wishes
+    to create a new io device (e.g., in the deviceStartComm method, or __init__
+    methods for other io devices).
     """
     ioDev = _ioDevices.get(dev.id)  # Get existing io device, if available.
-    if not ioDev:  # No io device in dictionary.
 
-        if not new:  # The io device should exist.  Return None.
-            return
-
-        else:  # The PiGPIO device was not started.  Create a new io device.
+    if new:  # Create and return a new io device object.
+        if not ioDev:  # Proceed only if no existing io device.
 
             # Get the io device class from the IO_DEV_CLASS dictionary.
 
@@ -368,18 +365,15 @@ def getIoDev(dev, new=False):
                 ioDev = globals()[ioDevClass](dev)
             except ConnectionError as errorMessage:
                 _pigpioError(dev, 'conn', errorMessage)
-                return
             except Exception as errorMessage:
                 _pigpioError(dev, 'start', errorMessage)
-                return
+            else:  # No startup exceptions; complete io device startup.
+                LI.startStop('"%s" started as a %s on %s',  # Log it.
+                             dev.name, dev.deviceTypeId, dev.address)
+                dev.setErrorStateOnServer(None)  # Clear any device errors.
+                ioDev.start()
 
-            # Complete successful io device startup.
-
-            LI.startStop('"%s" started as a %s on %s',  # Log it for debug.
-                         dev.name, dev.deviceTypeId, dev.address)
-            dev.setErrorStateOnServer(None)  # Clear any PiGPIO device errors.
-
-    return ioDev  # return the io device object.
+    return ioDev if ioDev and ioDev.running() else None
 
 
 def getRpiModel(connection):
@@ -403,6 +397,7 @@ def getRpiModel(connection):
                                 errors='strict')
         rgpio.exceptions = True
     return model
+
 
 def logStartupSummary():
     """
@@ -438,7 +433,7 @@ class IoDevice(ABC):
     """
     IoDevice is an abstract base class (ABC) that is used in defining all six
     of the io device subclasses.  It defines a number of internal and public
-    methods that are common to all of the subclasses.  These methods define the
+    methods that are common to all the subclasses.  These methods define the
     common io device behavior:
 
                       COMMON INSTANCE INITIALIZATION METHOD
@@ -481,6 +476,10 @@ class IoDevice(ABC):
     poll                      Called by the runConcurrentThread method in
                               plugin.py to read io devices (poll them) at a
                               unique rate for each device.
+    start                     Starts the io device by signaling that all
+                              startup functions have completed successfully and
+                              the device is running.
+    running                   Returns the io device running status.
     stop                      Stops an io device and releases its reserved
                               resources.
 
@@ -517,7 +516,14 @@ class IoDevice(ABC):
     ###########################################################################
     #                                                                         #
     #                             CLASS IoDevice                              #
-    #                                 PART I                                  #
+    #                                   PART                                  #
+    #                                                                         #
+    #                                   III                                   #
+    #                                    I                                    #
+    #                                    I                                    #
+    #                                    I                                    #
+    #                                    I                                    #
+    #                                   III                                   #
     #                                                                         #
     #                      CLASS ATTRIBUTES AND METHODS                       #
     #                                                                         #
@@ -542,7 +548,7 @@ class IoDevice(ABC):
         the database, and is both configured and enabled, return the device
         object.  Otherwise, return None.  This function is a stronger form of
         the usual indigo.devices.get(devName) that ensures that the device not
-        not exists, but is available to use.
+        only exists, but is available to use.
         """
         dev = indigo.devices.get(devName)
         if dev:
@@ -570,13 +576,15 @@ class IoDevice(ABC):
         """
 
         # Add the io device instance object to the internal _ioDevices
-        # dictionary.
+        # dictionary.  This makes the io device immediately available to the
+        # stop method in case there are startup exceptions.
 
         _ioDevices[dev.id] = self
 
         # Initialize common internal instance attributes:
 
         self._dev = dev          # Indigo device reference.
+        self._running = False    # Startup completed satisfactorily.
         self._c = None           # rgpiod connection object.
         self._h = None           # gpio, i2c or spi handle.
         self._hId = None         # gpio, i2c or spi handle id.
@@ -598,7 +606,14 @@ class IoDevice(ABC):
     ###########################################################################
     #                                                                         #
     #                             CLASS IoDevice                              #
-    #                                 PART II                                 #
+    #                                   PART                                  #
+    #                                                                         #
+    #                                III   III                                #
+    #                                 I     I                                 #
+    #                                 I     I                                 #
+    #                                 I     I                                 #
+    #                                 I     I                                 #
+    #                                III   III                                #
     #                                                                         #
     #                       RESOURCE MANAGEMENT METHODS                       #
     #                                                                         #
@@ -807,14 +822,13 @@ class IoDevice(ABC):
 
     def _getSpiHandle(self):
         """
-        Get an spi handle for the io device and update the resources
-        dictionary:
+        Get a spi handle for the io device and update the resources dictionary:
 
         Append '.spi', the spi channel, and the input/output bit rate to the
-        connection id to create an spi handle id for this connection and
-        device.  Get the resource tuple (spi handle, use count) for this id,
-        if available, from the resources dictionary.  If no handle exists, use
-        the rgpio library method spi_open to open a new one.
+        connection id to create a spi handle id for this connection and device.
+        Get the resource tuple (spi handle, use count) for this id, if
+        available, from the resources dictionary.  If no handle exists, use the
+        rgpio library method spi_open to open a new one.
 
         Reserve the existing or new handle by incrementing its use count and
         updating/adding the resource tuple in the dictionary.  Log the
@@ -891,7 +905,14 @@ class IoDevice(ABC):
     ###########################################################################
     #                                                                         #
     #                             CLASS IoDevice                              #
-    #                                PART III                                 #
+    #                                   PART                                  #
+    #                                                                         #
+    #                             III   III   III                             #
+    #                              I     I     I                              #
+    #                              I     I     I                              #
+    #                              I     I     I                              #
+    #                              I     I     I                              #
+    #                             III   III   III                             #
     #                                                                         #
     #                  STATE MANAGEMENT/PROCESSING METHODS                    #
     #                                                                         #
@@ -1040,7 +1061,14 @@ class IoDevice(ABC):
     ###########################################################################
     #                                                                         #
     #                             CLASS IoDevice                              #
-    #                                PART IV                                  #
+    #                                   PART                                  #
+    #                                                                         #
+    #                             III   III     III                           #
+    #                              I     I       I                            #
+    #                              I      I     I                             #
+    #                              I       I   I                              #
+    #                              I        I I                               #
+    #                             III       III                               #
     #                                                                         #
     #                            ABSTRACT METHODS                             #
     #                                                                         #
@@ -1062,13 +1090,22 @@ class IoDevice(ABC):
     ###########################################################################
     #                                                                         #
     #                             CLASS IoDevice                              #
-    #                                 PART V                                  #
+    #                                   PART                                  #
+    #                                                                         #
+    #                               III      III                              #
+    #                                I        I                               #
+    #                                 I     I                                 #
+    #                                  I   I                                  #
+    #                                   I I                                   #
+    #                                   III                                   #
     #                                                                         #
     #                          COMMON PUBLIC METHODS                          #
     #                                                                         #
     # def read(self, logAll=True)                                             #
     # def write(self, value)                                                  #
     # def poll(self)                                                          #
+    # def start(self)                                                         #
+    # def running(self)                                                       #
     # def stop(self)                                                          #
     #                                                                         #
     ###########################################################################
@@ -1122,6 +1159,20 @@ class IoDevice(ABC):
                         self._pollCount = 0
                         self._lastStatus = now
 
+    def start(self):
+        """
+        Start the io device by setting the self._running attribute.  This
+        indicates that all startup functions have been successfully completed
+        and the device is running.
+        """
+        self._running = True
+
+    def running(self):
+        """
+        Return the io device running status.
+        """
+        return self._running
+
     def stop(self):
         """
         Stop the io device by removing it from the io devices dictionary
@@ -1135,8 +1186,8 @@ class IoDevice(ABC):
             del _ioDevices[self._dev.id]
 
             # Check to see if the io device is an interrupt device.  If so,
-            # remove it from the from the interrupt devices list in the
-            # interrupt relay GPIO device.
+            # remove it from the interrupt devices list in the interrupt relay
+            # GPIO device.
 
             if 'hardwareInterrupt' in self._dev.pluginProps:  # Interrupt dev.
                 interruptRelayGPIO = self._dev.pluginProps[
@@ -1169,7 +1220,7 @@ class IoDevice(ABC):
 
             L.warning('"%s" stop error: %s', self._dev.name, errorMessage)
 
-        # Log successful stop completion for debugging.
+        # Log successful stop completion.
 
         LI.startStop('"%s" stopped', self._dev.name)
 
@@ -1247,7 +1298,7 @@ class ADC12(IoDevice):
         self._updateSensorValueStates(voltage, logAll=logAll)
 
     def _write(self, value):
-        """ Dummy method to allow a write to a read-only device. """
+        """ Dummy method to allow writing to a read-only device. """
         pass
 
 
@@ -1296,7 +1347,7 @@ class ADC18(IoDevice):
 
     def _read(self, logAll=True):
         """
-        Start a conversion and then iteratively read the ADC until the the
+        Start a conversion and then iteratively read the ADC until the
         conversion completes. Convert the ADC counts to a voltage and perform
         common sensor value processing, state updating, and logging.
         """
@@ -1340,7 +1391,7 @@ class ADC18(IoDevice):
         self._updateSensorValueStates(voltage, logAll=logAll)
 
     def _write(self, value):
-        """ Dummy method to allow a write to a read-only device. """
+        """ Dummy method to allow writing to a read-only device. """
         pass
 
 
@@ -1697,7 +1748,7 @@ class IoExpander(IoDevice):
         """
         Read and return a single byte of data from the specified device
         register.  Use rgpio library methods for i2c or spi based on the
-        device type.  For an spi operation, check the read integrity if
+        device type.  For a spi operation, check the read integrity if
         requested in the pluginProps.
         """
         registerAddress = self.REG_BASE_ADDR[register] + self._offset
