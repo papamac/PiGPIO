@@ -47,11 +47,11 @@ OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
 ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 OTHER DEALINGS IN THE SOFTWARE.
 
-For more information, please refer to <http://unlicense.org/>
+For more information, please refer to <https://unlicense.org/>
 
 DESCRIPTION:
 
-<http://abyz.me.uk/lg/py_rgpio.html>
+<https://abyz.me.uk/lg/py_rgpio.html>
 
 rgpio is a Python module which allows remote control of the GPIO
 and other functions of Linux SBCs running the rgpiod daemon.
@@ -138,7 +138,7 @@ OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
 ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 OTHER DEALINGS IN THE SOFTWARE.
 
-For more information, please refer to <http://unlicense.org/>
+For more information, please refer to <https://unlicense.org/>
 
 OVERVIEW
 
@@ -762,7 +762,7 @@ else:
 
 def u2i(uint32):
     """
-    Converts a 32 bit unsigned number to signed.
+    Converts a 32-bit unsigned number to signed.
 
     uint32:= an unsigned 32 bit number
 

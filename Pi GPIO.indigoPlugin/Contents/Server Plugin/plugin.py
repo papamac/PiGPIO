@@ -16,7 +16,7 @@ FUNCTION:  plugin.py defines the Plugin class, with standard methods that
    USAGE:  plugin.py is included in the Pi GPIO.indigoPlugin bundle and its
            methods are called by the Indigo server.
   AUTHOR:  papamac
- VERSION:  0.10.2
+ VERSION:  0.10.3
     DATE:  February 19, 2025
 
 UNLICENSE:
@@ -44,7 +44,7 @@ OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
 ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 OTHER DEALINGS IN THE SOFTWARE.
 
-For more information, please refer to <http://unlicense.org/>
+For more information, please refer to <https://unlicense.org/>
 
 Pi GPIO PLUGIN BUNDLE DESCRIPTION:
 
@@ -92,11 +92,11 @@ DEPENDENCIES/LIMITATIONS:
 
 The classes and methods in the pigpioDevices module depend on the pigpio Python
 library and the corresponding Raspberry Pi pigpio daemon server software.  Both
-of these were written by joan2937, et al and are available on
+of these were written by joan2937, et al. and are available on
 gitHub.com/joan2937/pigpio.  The current version is v79 released on March 2,
 2021.  The pigpio Python library is included in the plugin bundle as the module
 pygpio.py.  The pigpio daemon is included in current Raspberry Pi OS
-distributions.  There has been no recent change activity in this software and
+distributions.  There has been no recent change activity in this software, and
 it generally works well with the plugin.
 
 CHANGE LOG:
@@ -108,7 +108,7 @@ individual module docstrings if appropriate.
 Note 2/25/2024: Some of the following descriptions may seem confusing because
 the original module used joan2937's pigpio.py library and the pigpio daemon.
 These were not upgraded to support the Raspberry Pi 5 and were replaced by
-by papamac in v0.10.0 with their lg archive equivalents, rgpio.py and the rgpio
+papamac in v0.10.0 with their lg archive equivalents, rgpio.py and the rgpio
 daemon.  The historical record both here and in CHANGES.md retain references to
 the original pigpio software.
 
@@ -169,7 +169,7 @@ v0.10.0  2/25/2024  (1) Replace pigpio.py with rgpio.py to accommodate changes
 v0.10.1  3/25/2024  Refactor a key filename to be consistent with the change
                     from pigpio to rgpio: pigpioDevices.py becomes
                     ioDevices.py.
-v0.10.2  2/19/2025  Remove bounceFilter and bounceTime checks from method
+v0.10.3  2/19/2025  Remove bounceFilter and bounceTime checks from method
                     validateDeviceConfigUi.  The bounce filter was replaced by
                     the glitchFilter in v0.5.9.
 """
@@ -180,7 +180,7 @@ v0.10.2  2/19/2025  Remove bounceFilter and bounceTime checks from method
 ###############################################################################
 
 __author__ = 'papamac'
-__version__ = '0.10.2'
+__version__ = '0.10.3'
 __date__ = '2/19/2025'
 
 import indigo

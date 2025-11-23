@@ -44,7 +44,7 @@ OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
 ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 OTHER DEALINGS IN THE SOFTWARE.
 
-For more information, please refer to <http://unlicense.org/>
+For more information, please refer to <https://unlicense.org/>
 
 Pi GPIO PLUGIN BUNDLE DESCRIPTION:
 
@@ -171,7 +171,6 @@ v0.10.1  3/25/2024  (1) Refactor a key filename and class name to be consistent
                     comments for readability.
                     (4) Update ioDevices.py comments and docstrings.
 v0.10.2   4/1/2024  Update the wiki in preparation for the initial release.
-v1.0.0   4/15/2024  Initial GitHub release.
 """
 ###############################################################################
 #                                                                             #
@@ -554,6 +553,7 @@ class IoDevice(ABC):
         if dev:
             if dev.configured and dev.enabled:
                 return dev
+        return None
 
     @classmethod
     def _hexStr(cls, byteList):
@@ -1092,8 +1092,8 @@ class IoDevice(ABC):
     #                             CLASS IoDevice                              #
     #                                   PART                                  #
     #                                                                         #
-    #                               III      III                              #
-    #                                I        I                               #
+    #                               III     III                               #
+    #                                I       I                                #
     #                                 I     I                                 #
     #                                  I   I                                  #
     #                                   I I                                   #

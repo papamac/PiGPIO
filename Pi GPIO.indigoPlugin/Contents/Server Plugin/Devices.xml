@@ -34,7 +34,7 @@ organized into the following groups of fields:
 4. Processing
 5. Polling and Logging
 
-Many of the field id's are repeated in the four device ConfigUIs.  For ease in
+Many of the field ids are repeated in the four device ConfigUIs.  For ease in
 locating the correct one, fields are commented with the device type and field
 id.  Custom states for the analog devices follow the ConfigUIs.
 
@@ -740,7 +740,7 @@ v0.10.0  1/13/2024  Replace pigpio with rgpio to accommodate changes in
             </Field>
             <Field id="zzTurnOffValueLabel" type="label" fontSize="small"
                    fontColor="darkgray" alignText="center">
-                <Label>Enter a sensor value to write in a turn off action, or None if no turn off is desired.</Label>
+                <Label>Enter a sensor value to write in a turn-off action, or None if no turn off is desired.</Label>
             </Field>
 
             <!-- ############      analogOutput ConfigUI       ############ -->
