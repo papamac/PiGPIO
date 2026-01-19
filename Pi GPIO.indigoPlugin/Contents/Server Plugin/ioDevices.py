@@ -16,8 +16,8 @@ FUNCTION:  ioDevices.py provides classes to define and manage six types
    USAGE:  ioDevices.py is included by the primary plugin module,
            plugin.py.  Its methods are called as needed by plugin.py methods.
   AUTHOR:  papamac
- VERSION:  0.10.1
-    DATE:  March 25, 2024
+ VERSION:  0.10.4
+    DATE:  January 18, 2026
 
 UNLICENSE:
 
@@ -171,6 +171,8 @@ v0.10.1  3/25/2024  (1) Refactor a key filename and class name to be consistent
                     comments for readability.
                     (4) Update ioDevices.py comments and docstrings.
 v0.10.2   4/1/2024  Update the wiki in preparation for the initial release.
+v0.10.4  1/18/2026  (1) Change debug messages in IOExpander.
+                    (2) Update the wiki in preparation for the initial release.
 """
 ###############################################################################
 #                                                                             #
@@ -179,8 +181,8 @@ v0.10.2   4/1/2024  Update the wiki in preparation for the initial release.
 ###############################################################################
 
 __author__ = 'papamac'
-__version__ = '0.10.1'
-__date__ = '3/25/2024'
+__version__ = '0.10.4'
+__date__ = '1/18/2026'
 
 import indigo
 
@@ -219,6 +221,7 @@ GPIO_CHIP = {
     'Raspberry Pi 4 Model B':         0,
     'Raspberry Pi 5 Model B':         4,
     'Raspberry Pi Compute Module 4':  0,
+    'Raspberry Pi Compute Module 5':  4,
     'Raspberry Pi Zero 2 W':          0}
 
 ###############################################################################
@@ -386,13 +389,13 @@ def getRpiModel(connection):
         rgpio.exceptions = False
         cpuInfo = connection.file_open('/proc/cpuinfo', rgpio.FILE_READ)
         if cpuInfo >= 0:
-            nb, bytes_ = connection.file_read(cpuInfo, 2000)
+            numBytes, cpuBytes = connection.file_read(cpuInfo, 2000)
             connection.file_close(cpuInfo)
-            if nb > 0:
-                b1 = bytes_.find(b'Model\t\t: ')
-                b2 = bytes_.find(b' Rev ')
+            if numBytes > 0:
+                b1 = cpuBytes.find(b'Model\t\t: ')
+                b2 = cpuBytes.find(b' Rev ')
                 if b1 != -1 and b2 != -1:
-                    model = str(bytes_[b1 + 9:b2], encoding='utf-8',
+                    model = str(cpuBytes[b1 + 9:b2], encoding='utf-8',
                                 errors='strict')
         rgpio.exceptions = True
     return model
@@ -1278,11 +1281,11 @@ class ADC12(IoDevice):
             """
             Read and return a single 12-bit ADC output code (0-4095).
             """
-            nBytes, bytes_ = self._c.spi_xfer(self._h, self._data)
-            code = (bytes_[1] & 0x0f) << 8 | bytes_[2]
+            numBytes, spiBytes = self._c.spi_xfer(self._h, self._data)
+            code = (spiBytes[1] & 0x0f) << 8 | spiBytes[2]
             LD.analog('"%s" read %s | %s | %s | %s',
-                      self._dev.name, self._hexStr(self._data), nBytes,
-                      self._hexStr(bytes_), code)
+                      self._dev.name, self._hexStr(self._data), numBytes,
+                      self._hexStr(spiBytes), code)
             return code
 
         counts = _readADCOutputCode()
@@ -1367,17 +1370,17 @@ class ADC18(IoDevice):
 
         numReads = 0
         while True:
-            numBytes, bytes_ = self._c.i2c_read_i2c_block_data(
+            numBytes, i2cBytes = self._c.i2c_read_i2c_block_data(
                 self._h, config, numToRead)
             numReads += 1
-            if not (bytes_[-1] & notReady):  # Stop if ready.
+            if not (i2cBytes[-1] & notReady):  # Stop if ready.
                 break
 
         # Pack bytes from the returned bytearray into a single integer output
         # code.
 
-        counts = -1 if bytes_[0] & 0x80 else 0
-        for byte in bytes_[:-1]:
+        counts = -1 if i2cBytes[0] & 0x80 else 0
+        for byte in i2cBytes[:-1]:
             counts = counts << 8 | byte
 
         # Compute the voltage and update/log the sensor value states.
@@ -1387,7 +1390,7 @@ class ADC18(IoDevice):
         gain = int(self._dev.pluginProps['gain'])
         voltage = referenceVoltage * counts / (maxCode * gain)
         LD.analog('"%s" read %s | %s | %s | %s', self._dev.name, numReads,
-                  self._hexStr(bytes_), counts, voltage)
+                  self._hexStr(i2cBytes), counts, voltage)
         self._updateSensorValueStates(voltage, logAll=logAll)
 
     def _write(self, value):
@@ -1466,9 +1469,9 @@ class DAC12(IoDevice):
             dacChannel = int(self._dev.pluginProps['dacChannel'])
             data = (dacChannel << 7 | (gain & 1) << 5 | 0x10 | inputCode >> 8,
                     inputCode & 0xff)
-            nBytes = self._c.spi_write(self._h, data)
+            numBytes = self._c.spi_write(self._h, data)
             LD.analog('"%s" xfer %s | %s | %s | %s', self._dev.name, voltage,
-                      inputCode, self._hexStr(data), nBytes)
+                      inputCode, self._hexStr(data), numBytes)
         else:
             L.warning('"%s" converted input code %s is outside of DAC '
                       'range; write ignored', self._dev.name, inputCode)
@@ -1738,11 +1741,11 @@ class IoExpander(IoDevice):
         Read and return a single byte of data over the spi bus as directed by
         the spi control tuple.
         """
-        nBytes, bytes_ = self._c.spi_xfer(self._h, control)
-        LD.digital('"%s" readRegister %s %s | %s | %s', self._dev.name,
-                   register, self._hexStr(control), nBytes,
-                   self._hexStr(bytes_))
-        return bytes_[-1]
+        numBytes, spiBytes = self._c.spi_xfer(self._h, control)
+        LD.digital('"%s" readSPIByte %s %s | %s | %s', self._dev.name,
+                   register, self._hexStr(control), numBytes,
+                   self._hexStr(spiBytes))
+        return spiBytes[-1]
 
     def _readRegister(self, register):
         """
@@ -1755,20 +1758,21 @@ class IoExpander(IoDevice):
 
         if self._i2c:  # MCP230XX - i2c interface
             byte = self._c.i2c_read_byte_data(self._h, registerAddress)
-            LD.digital('"%s" readRegister %s %02x',
-                       self._dev.name, register, byte)
+        
         else:  # MCP23SXX - spi interface
             spiDevAddress = int(self._dev.pluginProps['spiDevAddress'], 16)
             control = (spiDevAddress << 1 | self.READ, registerAddress, 0)
             byte = self._readSPIByte(register, control)
-
+            
             if self._dev.pluginProps['checkSPI']:  # Check spi integrity.
-                byte_ = self._readSPIByte(register, control)
-                if byte != byte_:
+                byte2 = self._readSPIByte(register, control)
+                if byte != byte2:
                     L.warning('"%s" readRegister %s spi check: unequal '
                               'consecutive reads %02x %02x',
-                              self._dev.name, register, byte, byte_)
-                    byte = byte_
+                              self._dev.name, register, byte, byte2)
+                    byte = byte2
+        
+        LD.digital('"%s" readRegister %s %02x', self._dev.name, register, byte)
         return byte
 
     def _writeRegister(self, register, byte):
@@ -1786,9 +1790,9 @@ class IoExpander(IoDevice):
         else:  # MCP23SXX - spi interface
             spiDevAddress = int(self._dev.pluginProps['spiDevAddress'], 16)
             control = (spiDevAddress << 1 | self.WRITE, registerAddress, byte)
-            nBytes = self._c.spi_write(self._h, control)
-            LD.digital('"%s" writeRegister %s %s | %s',
-                       self._dev.name, register, self._hexStr(control), nBytes)
+            numBytes = self._c.spi_write(self._h, control)
+            LD.digital('"%s" writeRegister %s %s | %s', self._dev.name,
+                       register, self._hexStr(control), numBytes)
 
     def _updateRegister(self, register, bit):
         """
@@ -2073,9 +2077,9 @@ class PiGPIO(IoDevice):
         the resulting interrupt devices list for debug.
         """
 
-        # Check for a non-integer argument... yes, it has happened... I don't
+        # Check for a noninteger argument... yes, it has happened... I don't
         # know why.  Remove the following code segment once the source of the
-        # non-integer intDevId's is located and fixed.
+        # noninteger intDevId's is located and fixed.
 
         if not isinstance(intDevId, int):  # Is in intDevId an integer?
             intDevId = int(intDevId)  # No, make it one.
